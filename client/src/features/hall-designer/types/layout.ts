@@ -5,26 +5,34 @@ export type HallObjectType =
 export interface Hall {
   id: string;
   name: string;
-  width: number;   // metres
-  height: number;  // metres
+  width: number;
+  height: number;
   unit: "m";
 }
 
 interface BaseObject {
   id: string;
-  x: number;       // metres, top-left origin, y down
+  x: number;
   y: number;
   rotation: number;
 }
 
-export interface TableObject extends BaseObject {
+export interface RoundTableObject extends BaseObject {
   type: "table";
-  shape: "round" | "square" | "rectangular";
-  radius?: number;
-  width?: number;
-  height?: number;
+  shape: "round";
+  radius: number;
   capacity: number;
 }
+
+export interface RectTableObject extends BaseObject {
+  type: "table";
+  shape: "rectangular" | "square";
+  width: number;
+  height: number;
+  capacity: number;
+}
+
+export type TableObject = RoundTableObject | RectTableObject;
 
 export interface RectObject extends BaseObject {
   type: "stage" | "dance_floor" | "restricted_area" | "service_area";
@@ -38,7 +46,6 @@ export interface OpeningObject extends BaseObject {
 }
 
 export type HallObject = TableObject | RectObject | OpeningObject;
-// walls get added in Step 2/3
 
 export interface HallLayout {
   schema_version: 1;
@@ -47,7 +54,12 @@ export interface HallLayout {
 }
 
 export interface Viewport {
-  scale: number;    // pixels per metre
-  offsetX: number;  // pixels
+  scale: number;
+  offsetX: number;
   offsetY: number;
 }
+
+export type CreationTool =
+  | "table_round" | "table_rect" | "table_square"
+  | "stage" | "dance_floor" | "restricted_area" | "service_area"
+  | "entrance" | "exit";
