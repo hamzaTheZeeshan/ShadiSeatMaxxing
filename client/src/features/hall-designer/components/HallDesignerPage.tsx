@@ -16,7 +16,10 @@ const STATUS_TIMEOUT_MS = 4000;
 
 const styles = {
   root: {
-    height: "100vh",
+    flex: 1,
+    height: "100%",
+    minHeight: 0,
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -26,14 +29,13 @@ const styles = {
   header: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     gap: 12,
-    padding: "8px 16px",
+    padding: "6px 16px",
     background: "#ffffff",
     borderBottom: "1px solid #e5e7eb",
     flexShrink: 0,
   } satisfies CSSProperties,
-  title: { margin: 0, fontSize: 18, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
   actions: { display: "flex", alignItems: "center", gap: 8 } satisfies CSSProperties,
   button: {
     padding: "6px 12px",
@@ -136,8 +138,7 @@ export default function HallDesignerPage() {
 
   return (
     <div style={styles.root}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Shadi Maxing</h1>
+      <div style={styles.header}>
         <div style={styles.actions}>
           <span
             role="status"
@@ -169,7 +170,7 @@ export default function HallDesignerPage() {
             }}
           />
         </div>
-      </header>
+      </div>
       <div style={styles.body}>
         <Toolbar />
         <div style={styles.canvasColumn}>
