@@ -2,10 +2,10 @@ import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useConstraintStore } from "../features/constraints/store/constraintStore";
 import { useGuestStore } from "../features/guests/store/guestStore";
+import { useSeatingStore } from "../features/seating/store/seatingStore";
 
 /* ---------- theme ---------- */
 const ACCENT = "#ff2e5b";
-const ACCENT_DARK = "#e11d48";
 const ACCENT_SOFT = "#fff1f3";
 const INK = "#1f2937";
 const MUTED = "#6b7280";
@@ -210,7 +210,6 @@ const styles = {
     textDecoration: "none",
     color: INK,
   } satisfies CSSProperties,
-  tileDisabled: { opacity: 0.55, cursor: "not-allowed" } satisfies CSSProperties,
   tileLabel: { fontSize: 15, fontWeight: 600 } satisfies CSSProperties,
   tileSub: { fontSize: 12, color: MUTED } satisfies CSSProperties,
 
@@ -262,6 +261,16 @@ const styles = {
 export default function HomePage() {
   const guestCount = useGuestStore((s) => s.guests.length);
   const ruleCount = useConstraintStore((s) => s.rules.length);
+  const seatingStatus = useSeatingStore((s) => s.status);
+
+  const resultsSubtitle =
+    seatingStatus === "solving"
+      ? "Solving…"
+      : seatingStatus === "success"
+        ? "Plan ready"
+        : seatingStatus === "error"
+          ? "Last run failed"
+          : "";
 
   const tiles: Tile[] = [
     { label: "Design hall", icon: "hall", to: "/designer" },
@@ -277,7 +286,7 @@ export default function HomePage() {
       to: "/constraints",
       subtitle: ruleCount > 0 ? `${ruleCount} ${ruleCount === 1 ? "rule" : "rules"}` : "",
     },
-    { label: "Results", icon: "results", subtitle: "Coming soon" },
+    { label: "Results", icon: "results", to: "/results", subtitle: resultsSubtitle },
   ];
 
   return (
@@ -310,19 +319,11 @@ export default function HomePage() {
         <ul style={styles.tiles}>
           {tiles.map((tile) => (
             <li key={tile.label}>
-              {tile.to ? (
-                <Link to={tile.to} style={styles.tile}>
-                  <Icon name={tile.icon} />
-                  <span style={styles.tileLabel}>{tile.label}</span>
-                  {tile.subtitle ? <span style={styles.tileSub}>{tile.subtitle}</span> : null}
-                </Link>
-              ) : (
-                <div aria-disabled="true" style={{ ...styles.tile, ...styles.tileDisabled }}>
-                  <Icon name={tile.icon} />
-                  <span style={styles.tileLabel}>{tile.label}</span>
-                  {tile.subtitle ? <span style={styles.tileSub}>{tile.subtitle}</span> : null}
-                </div>
-              )}
+              <Link to={tile.to ?? "/"} style={styles.tile}>
+                <Icon name={tile.icon} />
+                <span style={styles.tileLabel}>{tile.label}</span>
+                {tile.subtitle ? <span style={styles.tileSub}>{tile.subtitle}</span> : null}
+              </Link>
             </li>
           ))}
         </ul>

@@ -6,6 +6,7 @@ import ConstraintsPage from "./pages/ConstraintsPage";
 import GuestsPage from "./pages/GuestsPage";
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ResultsPage from "./pages/ResultsPage";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/guests" element={<GuestsPage />} />
           <Route path="/designer" element={<HallDesignerPage />} />
           <Route path="/constraints" element={<ConstraintsPage />} />
+          <Route path="/results" element={<ResultsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
