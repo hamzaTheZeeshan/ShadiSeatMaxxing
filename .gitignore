@@ -1,6 +1,0 @@
-# secrets and local env
-.env
-server/.env
-.venv/
-__pycache__/
-*.pyc
