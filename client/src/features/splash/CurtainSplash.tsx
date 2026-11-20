@@ -1,338 +1,157 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import * as THREE from "three";
 import { hasSeenSplash, markSplashSeen, prefersReducedMotion } from "./splashSession";
 
+// NOTE: file/component name kept as CurtainSplash so your existing imports keep working.
+// It is now a pure CSS heart-emoji intro (no three.js needed).
+
 type Phase = "closed" | "opening" | "done";
-type Side = "left" | "right";
 
-const HOLD_MS = 650;
-const OPEN_MS = 1650;
+const HOLD_MS = 1500; // hearts float + title pops in
+const OPEN_MS = 1900; // burst + big rush of hearts, then fade to the app
 
-const GOLD = "#d4af37";
-const GOLD_LIGHT = "#f8e496";
-const GOLD_DARK = "#8a6712";
+// --- Theme (matches HomePage) -------------------------------------------------
+const ACCENT = "#ff2e5b";
+const ROSE_DEEP = "#be123c";
+const BLUSH = "#fff1f3";
+const FONT = "'Poppins', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
+const EMOJI_FONT = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
 
-// --- 3D Cloth & Stage Constants ----------------------------------------------
-const SEG_X = 96; // horizontal cloth resolution per curtain
-const SEG_Y = 64; // vertical cloth resolution per curtain
-const TIE_Y = 0.62; // normalized distance from top (0 = top rail, 1 = floor hem)
-const FOLD_COUNT = 9.5;
-const SWAG_COUNT = 5;
+const HEARTS = ["❤️", "💖", "💗", "💕", "💘", "💝", "🩷", "💓"];
+
+// Deterministic pseudo-random so nothing jumps between renders
+const rnd = (i: number, k: number) => {
+  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+const pick = (i: number, k: number) => HEARTS[Math.floor(rnd(i, k) * HEARTS.length)];
+
+// Ambient hearts: always floating bottom -> top (negative delay = already spread on screen)
+const AMBIENT = Array.from({ length: 18 }, (_, i) => {
+  const duration = 4200 + rnd(i, 1) * 2600;
+  return {
+    char: pick(i, 2),
+    left: rnd(i, 3) * 100,
+    size: 22 + rnd(i, 4) * 34,
+    duration,
+    delay: -rnd(i, 5) * duration,
+    sway: 14 + rnd(i, 6) * 26,
+  };
+});
+
+// Rush hearts: a big upward wave when the intro opens
+const RUSH = Array.from({ length: 36 }, (_, i) => ({
+  char: pick(i + 40, 2),
+  left: rnd(i + 40, 3) * 100,
+  size: 24 + rnd(i + 40, 4) * 46,
+  duration: 1300 + rnd(i + 40, 5) * 900,
+  delay: rnd(i + 40, 6) * 700,
+  sway: 10 + rnd(i + 40, 7) * 30,
+}));
+
+// Burst hearts: pop outward from the centre
+const BURST = Array.from({ length: 26 }, (_, i) => {
+  const angle = (i / 26) * Math.PI * 2 + rnd(i + 90, 1) * 0.3;
+  const dist = 26 + rnd(i + 90, 2) * 32;
+  return {
+    char: pick(i + 90, 3),
+    dx: Math.cos(angle) * dist,
+    dy: Math.sin(angle) * dist,
+    size: 22 + rnd(i + 90, 4) * 32,
+    duration: 900 + rnd(i + 90, 5) * 600,
+    delay: rnd(i + 90, 6) * 160,
+    spin: (rnd(i + 90, 7) - 0.5) * 70,
+  };
+});
 
 const KEYFRAMES =
-  "@keyframes shadiSplashTitleIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}" +
-  "@keyframes shadiSplashFade{0%,82%{opacity:1}100%{opacity:0}}";
-
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smooth = (t: number) => t * t * (3 - 2 * t);
-const easeSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
-
-// Width ratio of the gathered curtain at vertical fraction yf (0 = top, 1 = bottom)
-function gatheredWidth(yf: number): number {
-  if (yf < TIE_Y) return lerp(0.32, 0.095, smooth(yf / TIE_Y));
-  return lerp(0.095, 0.24, smooth((yf - TIE_Y) / (1 - TIE_Y)));
-}
-
-// --- Procedural PBR Textures (Zero external network assets) -----------------
-function createVelvetTextures(): {
-  normalMap: THREE.CanvasTexture;
-  roughnessMap: THREE.CanvasTexture;
-} {
-  const size = 256;
-  const heightField = new Float32Array(size * size);
-
-  // Build organic crushed-velvet + vertical pile micro-height field
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const nx = (x / size) * Math.PI * 2;
-      const ny = (y / size) * Math.PI * 2;
-
-      const pile = Math.sin(nx * 48 + Math.sin(ny * 6) * 2.0) * 0.25;
-      const crush1 = Math.sin(nx * 3 + Math.cos(ny * 4) * 1.8) * 0.4;
-      const crush2 = Math.cos(nx * 7 - ny * 5 + Math.sin(nx * 2 + ny * 3)) * 0.35;
-      heightField[y * size + x] = 0.5 + 0.5 * (pile + crush1 + crush2);
-    }
-  }
-
-  // Convert height field to tangent-space normal map
-  const normCanvas = document.createElement("canvas");
-  normCanvas.width = size;
-  normCanvas.height = size;
-  const nCtx = normCanvas.getContext("2d")!;
-  const nImg = nCtx.createImageData(size, size);
-
-  // Pair with subtle roughness variation
-  const roughCanvas = document.createElement("canvas");
-  roughCanvas.width = size;
-  roughCanvas.height = size;
-  const rCtx = roughCanvas.getContext("2d")!;
-  const rImg = rCtx.createImageData(size, size);
-
-  const strength = 2.4;
-  for (let y = 0; y < size; y++) {
-    const ym = (y - 1 + size) % size;
-    const yp = (y + 1) % size;
-    for (let x = 0; x < size; x++) {
-      const xm = (x - 1 + size) % size;
-      const xp = (x + 1) % size;
-
-      const dX = (heightField[y * size + xp] - heightField[y * size + xm]) * strength;
-      const dY = (heightField[yp * size + x] - heightField[ym * size + x]) * strength;
-      const invLen = 1 / Math.sqrt(dX * dX + dY * dY + 1);
-
-      const idx = (y * size + x) * 4;
-      nImg.data[idx] = Math.round((-dX * invLen * 0.5 + 0.5) * 255);
-      nImg.data[idx + 1] = Math.round((-dY * invLen * 0.5 + 0.5) * 255);
-      nImg.data[idx + 2] = Math.round((invLen * 0.5 + 0.5) * 255);
-      nImg.data[idx + 3] = 255;
-
-      const hVal = heightField[y * size + x];
-      const roughByte = Math.round(lerp(195, 242, hVal)); // 0.76 - 0.95 roughness
-      rImg.data[idx] = roughByte;
-      rImg.data[idx + 1] = roughByte;
-      rImg.data[idx + 2] = roughByte;
-      rImg.data[idx + 3] = 255;
-    }
-  }
-
-  nCtx.putImageData(nImg, 0, 0);
-  rCtx.putImageData(rImg, 0, 0);
-
-  const normalMap = new THREE.CanvasTexture(normCanvas);
-  normalMap.wrapS = THREE.RepeatWrapping;
-  normalMap.wrapT = THREE.RepeatWrapping;
-  normalMap.repeat.set(6, 10);
-
-  const roughnessMap = new THREE.CanvasTexture(roughCanvas);
-  roughnessMap.wrapS = THREE.RepeatWrapping;
-  roughnessMap.wrapT = THREE.RepeatWrapping;
-  roughnessMap.repeat.set(6, 10);
-
-  return { normalMap, roughnessMap };
-}
-
-function createGoldBraidNormalMap(): THREE.CanvasTexture {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const img = ctx.createImageData(size, size);
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x / size) * Math.PI * 2;
-      const v = (y / size) * Math.PI * 2;
-      const weave = Math.sin(u * 12 + v * 12) * 0.5 + Math.cos(u * 12 - v * 12) * 0.5;
-      const idx = (y * size + x) * 4;
-      img.data[idx] = Math.round(128 + weave * 55);
-      img.data[idx + 1] = Math.round(128 - weave * 55);
-      img.data[idx + 2] = 235;
-      img.data[idx + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2, 24);
-  return tex;
-}
-
-// --- 3D Scalloped Theatre Valance Builder ------------------------------------
-function buildValanceGroup(
-  worldW: number,
-  worldH: number,
-  velvetMat: THREE.MeshPhysicalMaterial,
-  goldMat: THREE.MeshStandardMaterial,
-): THREE.Group {
-  const group = new THREE.Group();
-  const topY = worldH / 2;
-  const valanceH = Math.min(worldH * 0.21, 1.55);
-  const fullW = worldW * 1.03;
-
-  // 1. Top molded gold cornice beam
-  const corniceGeo = new THREE.BoxGeometry(fullW, valanceH * 0.11, 0.28);
-  const cornice = new THREE.Mesh(corniceGeo, goldMat);
-  cornice.position.set(0, topY - valanceH * 0.04, 0.36);
-  cornice.castShadow = true;
-  group.add(cornice);
-
-  // Helper to build a 3D pleated scalloped festoon strip across SWAG_COUNT arches
-  const createScallopMesh = (
-    dropDepth: number,
-    zOffset: number,
-    pleatAmp: number,
-    mat: THREE.Material,
-  ) => {
-    const nx = 160;
-    const ny = 24;
-    const geo = new THREE.PlaneGeometry(fullW, dropDepth, nx, ny);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-
-    for (let i = 0; i < pos.count; i++) {
-      const px = pos.getX(i);
-      const py = pos.getY(i);
-      const u = (px + fullW / 2) / fullW; // 0..1 across screen
-      const v = 1 - (py + dropDepth / 2) / dropDepth; // 0 at top rail, 1 at bottom scallop
-
-      const swagPhase = (u * SWAG_COUNT) % 1;
-      const arch = Math.sin(Math.PI * swagPhase); // 0 at swag pinch, 1 at swag center
-
-      // Catenary scallop silhouette
-      const bottomY = dropDepth * (0.42 + 0.58 * Math.pow(arch, 0.85));
-      const worldY = topY - v * bottomY;
-
-      // Radial draped folds curving along each swag
-      const drapeAngle = (swagPhase - 0.5) * Math.PI;
-      const radialFold = Math.sin(drapeAngle * 11) * Math.sin(v * Math.PI) * pleatAmp;
-      const bellyOut = Math.sin(v * Math.PI * 0.85) * arch * 0.16;
-
-      pos.setXYZ(i, px, worldY, zOffset + radialFold + bellyOut);
-    }
-
-    geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
-  };
-
-  // 2. Deep crimson velvet primary swags (back layer of valance)
-  group.add(createScallopMesh(valanceH * 1.12, 0.24, 0.065, velvetMat));
-
-  // 3. Luxurious gold scalloped overlay swags (front layer of valance)
-  group.add(createScallopMesh(valanceH * 0.78, 0.31, 0.045, goldMat));
-
-  // 4. Pleated side tails (jabots) & hanging gold tassels at each swag junction
-  for (let s = 0; s <= SWAG_COUNT; s++) {
-    const u = s / SWAG_COUNT;
-    const xPos = (u - 0.5) * fullW;
-    const isEdge = s === 0 || s === SWAG_COUNT;
-
-    if (isEdge) {
-      const jabotH = valanceH * 1.65;
-      const jabotW = fullW * 0.065;
-      const jGeo = new THREE.PlaneGeometry(jabotW, jabotH, 18, 20);
-      const jPos = jGeo.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < jPos.count; i++) {
-        const jx = jPos.getX(i);
-        const jy = jPos.getY(i);
-        const ju = (jx + jabotW / 2) / jabotW;
-        const jv = 1 - (jy + jabotH / 2) / jabotH;
-        const taper = 1 - jv * 0.28;
-        const foldZ = Math.sin(ju * Math.PI * 7) * 0.055 * (1 - jv * 0.3);
-        jPos.setXYZ(i, xPos + jx * taper, topY - jv * jabotH, 0.32 + foldZ);
-      }
-      jGeo.computeVertexNormals();
-      const jabot = new THREE.Mesh(jGeo, velvetMat);
-      jabot.castShadow = true;
-      group.add(jabot);
-    }
-
-    // Gold ornament + mini tassel at each swag pinch point
-    const pinY = topY - valanceH * 0.44;
-    const ornament = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), goldMat);
-    ornament.scale.set(1, 1, 0.55);
-    ornament.position.set(xPos, pinY, 0.38);
-    group.add(ornament);
-
-    const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.24, 14), goldMat);
-    tassel.position.set(xPos, pinY - 0.16, 0.37);
-    group.add(tassel);
-  }
-
-  return group;
-}
-
-// --- 3D Tie-Back Assembly (Twisted Gold Rope, Rosette & Multi-Strand Tassel) ---
-interface TieBackRig {
-  group: THREE.Group;
-  ropeMesh: THREE.Mesh;
-  rosetteGroup: THREE.Group;
-  tasselGroup: THREE.Group;
-}
-
-function buildTieBackRig(goldMat: THREE.MeshStandardMaterial): TieBackRig {
-  const group = new THREE.Group();
-  group.visible = false;
-
-  // Placeholder rope geometry (updated dynamically when opening)
-  const ropeMesh = new THREE.Mesh(new THREE.BufferGeometry(), goldMat);
-  ropeMesh.castShadow = true;
-  group.add(ropeMesh);
-
-  // Sculpted 3D rosette clasp
-  const rosetteGroup = new THREE.Group();
-  const outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.024, 14, 28), goldMat);
-  const centerDome = new THREE.Mesh(new THREE.SphereGeometry(0.062, 20, 16), goldMat);
-  centerDome.scale.set(1, 1, 0.5);
-  rosetteGroup.add(outerRing, centerDome);
-
-  for (let p = 0; p < 12; p++) {
-    const angle = (p / 12) * Math.PI * 2;
-    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.024, 10, 10), goldMat);
-    petal.scale.set(1.4, 0.75, 0.5);
-    petal.rotation.z = angle;
-    petal.position.set(Math.cos(angle) * 0.072, Math.sin(angle) * 0.072, 0.01);
-    rosetteGroup.add(petal);
-  }
-  group.add(rosetteGroup);
-
-  // Multi-strand hanging gold tassel
-  const tasselGroup = new THREE.Group();
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.048, 0.08, 16), goldMat);
-  cap.position.y = -0.09;
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.012, 10, 20), goldMat);
-  collar.rotation.x = Math.PI / 2;
-  collar.position.y = -0.13;
-  tasselGroup.add(cap, collar);
-
-  const strandCount = 22;
-  const strandGeo = new THREE.CylinderGeometry(0.0055, 0.007, 0.42, 6);
-  for (let s = 0; s < strandCount; s++) {
-    const a = (s / strandCount) * Math.PI * 2;
-    const ring = s % 2 === 0 ? 0.032 : 0.018;
-    const strand = new THREE.Mesh(strandGeo, goldMat);
-    strand.position.set(Math.cos(a) * ring, -0.34, Math.sin(a) * ring);
-    strand.rotation.z = Math.cos(a) * -0.05;
-    strand.rotation.x = Math.sin(a) * 0.05;
-    tasselGroup.add(strand);
-  }
-  group.add(tasselGroup);
-
-  return { group, ropeMesh, rosetteGroup, tasselGroup };
-}
+  // overall fade out at the end of the opening phase
+  "@keyframes shadiSplashFade{0%,82%{opacity:1}100%{opacity:0}}" +
+  // heart travel: glide bottom -> top, fade in near the bottom and out near the top
+  "@keyframes shadiHeartRise{0%{opacity:0;transform:translate3d(0,0,0)}8%{opacity:1}82%{opacity:1}100%{opacity:0;transform:translate3d(0,-125vh,0)}}" +
+  // gentle side-to-side glide
+  "@keyframes shadiHeartSway{0%,100%{transform:translateX(calc(var(--sway) * -1px)) rotate(-12deg)}50%{transform:translateX(calc(var(--sway) * 1px)) rotate(12deg)}}" +
+  // pop in at the start of each journey
+  "@keyframes shadiHeartPop{0%{transform:scale(0)}7%{transform:scale(1.4)}12%{transform:scale(0.92)}17%,100%{transform:scale(1)}}" +
+  // radial burst from the centre
+  "@keyframes shadiHeartBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(0) rotate(0deg)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.5) rotate(0deg)}100%{opacity:0;transform:translate(calc(-50% + var(--dx) * 1vmin),calc(-50% + var(--dy) * 1vmin)) scale(0.8) rotate(calc(var(--spin) * 1deg))}}" +
+  // big centre heart: heartbeat while waiting
+  "@keyframes shadiBeat{0%,100%{transform:translate(-50%,-50%) scale(1)}18%{transform:translate(-50%,-50%) scale(1.12)}32%{transform:translate(-50%,-50%) scale(1)}46%{transform:translate(-50%,-50%) scale(1.07)}60%{transform:translate(-50%,-50%) scale(1)}}" +
+  // big centre heart: bursts open and fades
+  "@keyframes shadiBigBurst{0%{opacity:0.3;transform:translate(-50%,-50%) scale(1)}25%{opacity:0.4;transform:translate(-50%,-50%) scale(1.25)}100%{opacity:0;transform:translate(-50%,-50%) scale(6)}}" +
+  "@keyframes shadiTitlePop{0%{opacity:0;transform:scale(0.75)}60%{opacity:1;transform:scale(1.07)}100%{opacity:1;transform:scale(1)}}" +
+  "@keyframes shadiRingBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}" +
+  "@keyframes shadiSplashHint{0%,100%{opacity:0.5}50%{opacity:1}}";
 
 // --- Styles ------------------------------------------------------------------
 const styles = {
-  mount: {
+  stage: {
     position: "absolute",
     inset: 0,
-    width: "100%",
-    height: "100%",
-    display: "block",
+    background: `radial-gradient(ellipse at 50% 55%, #ffffff 0%, ${BLUSH} 40%, #ffc2d1 100%)`,
+  } satisfies CSSProperties,
+  layer: {
+    position: "absolute",
+    inset: 0,
+    overflow: "hidden",
     pointerEvents: "none",
+  } satisfies CSSProperties,
+  hint: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 36,
+    zIndex: 3,
+    textAlign: "center",
+    fontFamily: FONT,
+    fontSize: 13,
+    letterSpacing: "0.08em",
+    color: ROSE_DEEP,
+    pointerEvents: "none",
+    animation: "shadiSplashHint 2s ease-in-out infinite",
   } satisfies CSSProperties,
   skip: {
     position: "absolute",
     right: 20,
-    bottom: 28,
-    zIndex: 3,
-    padding: "9px 18px",
+    bottom: 24,
+    zIndex: 4,
+    padding: "10px 20px",
     fontSize: 14,
-    fontWeight: 500,
-    letterSpacing: "0.04em",
-    fontFamily: "system-ui, sans-serif",
-    color: GOLD_LIGHT,
-    background: "rgba(18, 3, 6, 0.65)",
-    backdropFilter: "blur(6px)",
-    border: `1px solid ${GOLD}`,
-    borderRadius: 6,
+    fontWeight: 600,
+    fontFamily: FONT,
+    color: ACCENT,
+    background: "rgba(255, 255, 255, 0.92)",
+    border: "1px solid #ffc2d1",
+    borderRadius: 999,
+    boxShadow: "0 6px 18px rgba(255, 46, 91, 0.25)",
     cursor: "pointer",
+  } satisfies CSSProperties,
+  ring: {
+    fontFamily: EMOJI_FONT,
+    fontSize: 44,
+    lineHeight: 1,
+    marginBottom: 10,
+    animation: "shadiRingBounce 1.6s ease-in-out infinite",
+  } satisfies CSSProperties,
+  h1: {
+    margin: 0,
+    fontFamily: FONT,
+    fontSize: "clamp(38px, 7.5vw, 84px)",
+    fontWeight: 700,
+    lineHeight: 1.05,
+    letterSpacing: "0.01em",
+    color: ROSE_DEEP,
+    textShadow: "0 2px 0 #ffffff, 0 0 28px rgba(255, 255, 255, 0.95)",
+  } satisfies CSSProperties,
+  tagline: {
+    margin: "14px 0 0",
+    fontFamily: FONT,
+    fontSize: "clamp(14px, 2.2vw, 20px)",
+    fontWeight: 500,
+    letterSpacing: "0.03em",
+    color: ROSE_DEEP,
+    opacity: 0.85,
+    textShadow: "0 0 14px rgba(255, 255, 255, 0.95)",
   } satisfies CSSProperties,
 };
 
@@ -348,6 +167,26 @@ function rootStyle(phase: Phase): CSSProperties {
   };
 }
 
+function bigHeartStyle(phase: Phase): CSSProperties {
+  return {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    zIndex: 1,
+    fontFamily: EMOJI_FONT,
+    fontSize: "clamp(180px, 46vmin, 420px)",
+    lineHeight: 1,
+    opacity: 0.3,
+    transform: "translate(-50%, -50%)",
+    pointerEvents: "none",
+    willChange: "transform, opacity",
+    animation:
+      phase === "opening"
+        ? "shadiBigBurst 1000ms cubic-bezier(0.5, 0, 0.9, 0.4) forwards"
+        : "shadiBeat 1.4s ease-in-out infinite",
+  };
+}
+
 function titleStyle(phase: Phase): CSSProperties {
   const opening = phase === "opening";
   return {
@@ -355,22 +194,68 @@ function titleStyle(phase: Phase): CSSProperties {
     inset: 0,
     zIndex: 2,
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     pointerEvents: "none",
-    margin: 0,
     padding: "0 16px",
     textAlign: "center",
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: "clamp(34px, 7vw, 76px)",
-    fontWeight: 700,
-    letterSpacing: "0.06em",
-    color: GOLD_LIGHT,
-    textShadow: `0 2px 14px rgba(0,0,0,0.85), 0 0 28px rgba(212,175,55,0.45)`,
     opacity: opening ? 0 : 1,
-    animation: opening ? "none" : "shadiSplashTitleIn 520ms ease-out",
-    transition: opening ? `opacity ${Math.round(HOLD_MS * 0.85)}ms ease-in` : "none",
+    animation: opening ? "none" : "shadiTitlePop 800ms cubic-bezier(0.22, 1.4, 0.36, 1) both",
+    transition: opening ? "opacity 600ms ease-in 250ms" : "none",
   };
+}
+
+interface FloatProps {
+  char: string;
+  left: number;
+  size: number;
+  duration: number;
+  delay: number;
+  sway: number;
+  infinite: boolean;
+}
+
+// Three nested layers so rise, sway and pop never fight over `transform`.
+function FloatingHeart({ char, left, size, duration, delay, sway, infinite }: FloatProps) {
+  const iterations = infinite ? "infinite" : 1;
+  const ease = infinite ? "linear" : "cubic-bezier(0.2, 0.7, 0.3, 1)";
+  return (
+    <span
+      style={
+        {
+          position: "absolute",
+          left: `${left}%`,
+          bottom: -size * 1.5,
+          willChange: "transform, opacity",
+          animation: `shadiHeartRise ${duration}ms ${ease} ${delay}ms ${iterations} both`,
+        } as CSSProperties
+      }
+    >
+      <span
+        style={
+          {
+            display: "block",
+            "--sway": sway,
+            animation: `shadiHeartSway ${Math.max(1400, duration * 0.45)}ms ease-in-out ${delay}ms infinite`,
+          } as CSSProperties
+        }
+      >
+        <span
+          style={{
+            display: "block",
+            fontFamily: EMOJI_FONT,
+            fontSize: size,
+            lineHeight: 1,
+            filter: "drop-shadow(0 4px 8px rgba(255, 46, 91, 0.25))",
+            animation: `shadiHeartPop ${duration}ms ease-out ${delay}ms ${iterations} both`,
+          }}
+        >
+          {char}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 export default function CurtainSplash() {
@@ -379,11 +264,6 @@ export default function CurtainSplash() {
   );
   const markedRef = useRef(false);
   const skipRef = useRef<HTMLButtonElement>(null);
-  const mountRef = useRef<HTMLDivElement>(null);
-  const phaseRef = useRef<Phase>(phase);
-  const openStartRef = useRef<number | null>(null);
-
-  phaseRef.current = phase;
 
   const markOnce = () => {
     if (markedRef.current) return;
@@ -429,313 +309,72 @@ export default function CurtainSplash() {
     if (phase === "closed") skipRef.current?.focus();
   }, [phase]);
 
-  // WebGL 3D Theatre Scene
-  useEffect(() => {
-    if (phase === "done") return;
-    const container = mountRef.current;
-    if (!container) return;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-
-    // Camera sized so Z=0 plane maps cleanly to viewport dimensions
-    const fov = 40;
-    const camZ = 10;
-    const camera = new THREE.PerspectiveCamera(
-      fov,
-      Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1),
-      0.1,
-      50,
-    );
-    camera.position.set(0, 0, camZ);
-
-    const getWorldSize = () => {
-      const worldH = 2 * camZ * Math.tan((fov * Math.PI) / 360);
-      const worldW = worldH * camera.aspect;
-      return { worldW, worldH };
-    };
-
-    let { worldW, worldH } = getWorldSize();
-
-    // --- Theatrical Stage Lighting -----------------------------------------
-    const ambient = new THREE.AmbientLight(0x3a0710, 1.35);
-    scene.add(ambient);
-
-    // Warm overhead front-center stage spotlight (casts valance shadows onto curtains)
-    const mainSpot = new THREE.SpotLight(0xfff0d4, 95, 32, Math.PI * 0.36, 0.55, 1.3);
-    mainSpot.position.set(0, worldH * 0.72, 7.5);
-    mainSpot.castShadow = true;
-    mainSpot.shadow.mapSize.set(1024, 1024);
-    mainSpot.shadow.bias = -0.0005;
-    scene.add(mainSpot);
-
-    // Side raking lights to accentuate 3D velvet fold ridges & metallic gold highlights
-    const leftRake = new THREE.PointLight(0xffd79a, 26, 22, 1.4);
-    leftRake.position.set(-worldW * 0.42, worldH * 0.15, 4.2);
-    scene.add(leftRake);
-
-    const rightRake = new THREE.PointLight(0xffd79a, 26, 22, 1.4);
-    rightRake.position.set(worldW * 0.42, worldH * 0.15, 4.2);
-    scene.add(rightRake);
-
-    // Subtle warm floor bounce
-    const footLight = new THREE.DirectionalLight(0xffb86c, 0.55);
-    footLight.position.set(0, -5, 3);
-    scene.add(footLight);
-
-    // --- Physically-Based Velvet & Gold Materials --------------------------
-    const { normalMap, roughnessMap } = createVelvetTextures();
-    const goldNormalMap = createGoldBraidNormalMap();
-
-    const velvetMat = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color("#690611"),
-      roughness: 0.88,
-      metalness: 0.02,
-      normalMap,
-      normalScale: new THREE.Vector2(0.7, 0.7),
-      roughnessMap,
-      sheen: 1.0,
-      sheenRoughness: 0.4,
-      sheenColor: new THREE.Color("#ff4c5e"),
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 1,
-    });
-
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(GOLD),
-      emissive: new THREE.Color(GOLD_DARK),
-      emissiveIntensity: 0.14,
-      metalness: 0.86,
-      roughness: 0.24,
-      normalMap: goldNormalMap,
-      normalScale: new THREE.Vector2(0.45, 0.45),
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 1,
-    });
-
-    // --- Curtain Meshes + Dynamic Gold Edge & Hem Trim Ribbons -------------
-    const buildCurtainSide = () => {
-      const geo = new THREE.PlaneGeometry(1, 1, SEG_X, SEG_Y);
-      const mesh = new THREE.Mesh(geo, velvetMat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-
-      // Leading-edge vertical gold braid ribbon (2 vertices wide x SEG_Y+1 tall)
-      const edgeGeo = new THREE.PlaneGeometry(1, 1, 1, SEG_Y);
-      const edgeMesh = new THREE.Mesh(edgeGeo, goldMat);
-      scene.add(edgeMesh);
-
-      // Bottom hem gold border + fringe ribbon (SEG_X+1 wide x 2 vertices tall)
-      const hemGeo = new THREE.PlaneGeometry(1, 1, SEG_X, 1);
-      const hemMesh = new THREE.Mesh(hemGeo, goldMat);
-      scene.add(hemMesh);
-
-      const tieBack = buildTieBackRig(goldMat);
-      scene.add(tieBack.group);
-
-      return { geo, mesh, edgeGeo, edgeMesh, hemGeo, hemMesh, tieBack };
-    };
-
-    const leftCurtain = buildCurtainSide();
-    const rightCurtain = buildCurtainSide();
-
-    // --- Fixed Top 3D Theatre Valance --------------------------------------
-    let valanceGroup = buildValanceGroup(worldW, worldH, velvetMat, goldMat);
-    scene.add(valanceGroup);
-
-    const onResize = () => {
-      if (!container) return;
-      const w = Math.max(container.clientWidth, 1);
-      const h = Math.max(container.clientHeight, 1);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-      ({ worldW, worldH } = getWorldSize());
-
-      scene.remove(valanceGroup);
-      valanceGroup = buildValanceGroup(worldW, worldH, velvetMat, goldMat);
-      scene.add(valanceGroup);
-    };
-    window.addEventListener("resize", onResize);
-
-    // Deform one curtain side + sync its 3D gold trims & tie-back rig
-    const updateSide = (
-      side: Side,
-      rig: ReturnType<typeof buildCurtainSide>,
-      r: number,
-      t: number,
-    ) => {
-      const halfW = worldW * 0.506; // slight center overlap when closed
-      const topY = worldH * 0.505;
-      const fullH = worldH * 1.015;
-      const dir = side === "left" ? 1 : -1;
-      const originX = side === "left" ? -halfW : halfW;
-      const phaseOffset = side === "left" ? 0 : 1.35;
-
-      const pos = rig.geo.attributes.position as THREE.BufferAttribute;
-      const edgePos = rig.edgeGeo.attributes.position as THREE.BufferAttribute;
-      const hemPos = rig.hemGeo.attributes.position as THREE.BufferAttribute;
-
-      const qMid = easeSine(clamp01(r * 1.28 - 0.14));
-      const foldDepth = lerp(0.11, 0.24, qMid); // pleats deepen in 3D as fabric bunches
-      const swayAmp = 0.015 + 0.065 * Math.sin(Math.PI * r);
-
-      let tieAnchorX = originX;
-      let tieAnchorY = topY - fullH * TIE_Y;
-      let tieAnchorZ = 0.12;
-      const tieRow = Math.round(TIE_Y * SEG_Y);
-
-      for (let iy = 0; iy <= SEG_Y; iy++) {
-        const yf = iy / SEG_Y; // 0 at top rail, 1 at floor hem
-        const q = easeSine(clamp01(r * 1.28 - 0.28 * yf));
-        const wf = lerp(1, gatheredWidth(yf), q);
-        const yBottom = fullH * (1 - q * 0.065);
-
-        for (let ix = 0; ix <= SEG_X; ix++) {
-          const u = ix / SEG_X; // 0 at outer wall, 1 at center leading edge
-          const bunch = Math.pow(u, 1 + 0.34 * q);
-
-          let x = bunch * halfW * wf;
-          x +=
-            (1 - u * (1 - q)) *
-            yf *
-            swayAmp *
-            Math.sin(t * 0.0014 + yf * 3.2 + u * 5.0 + phaseOffset);
-
-          // Natural multi-harmonic vertical pleats with subtle organic irregularity
-          const freq = u * Math.PI * 2 * FOLD_COUNT + phaseOffset + Math.sin(yf * 2.4 + u * 4) * 0.18;
-          const wave = 0.72 * Math.cos(freq) + 0.28 * Math.cos(freq * 2.15 + 1.05);
-          const verticalEnvelope = 0.35 + 0.65 * Math.sin(Math.min(1, yf * 1.6) * (Math.PI / 2));
-          const z = wave * foldDepth * verticalEnvelope;
-
-          const lift = q * 0.055 * fullH * u * u;
-          const vx = originX + dir * x;
-          const vy = topY - yf * (yBottom - lift);
-
-          const vIdx = iy * (SEG_X + 1) + ix;
-          pos.setXYZ(vIdx, vx, vy, z);
-
-          // Sync leading-edge gold braid ribbon (ix === SEG_X)
-          if (ix === SEG_X) {
-            const braidW = 0.042;
-            edgePos.setXYZ(iy * 2, vx - dir * braidW, vy, z + 0.018);
-            edgePos.setXYZ(iy * 2 + 1, vx + dir * 0.006, vy, z + 0.022);
-
-            if (iy === tieRow) {
-              tieAnchorX = vx;
-              tieAnchorY = vy;
-              tieAnchorZ = Math.max(z, 0.08);
-            }
-          }
-
-          // Sync bottom hem gold border + fringe (iy === SEG_Y)
-          if (iy === SEG_Y) {
-            const fringeH = 0.085;
-            hemPos.setXYZ(ix, vx, vy + 0.028, z + 0.016);
-            hemPos.setXYZ(SEG_X + 1 + ix, vx, vy - fringeH, z + 0.012);
-          }
-        }
-      }
-
-      pos.needsUpdate = true;
-      rig.geo.computeVertexNormals();
-      edgePos.needsUpdate = true;
-      rig.edgeGeo.computeVertexNormals();
-      hemPos.needsUpdate = true;
-      rig.hemGeo.computeVertexNormals();
-
-      // Update 3D gold rope tie-back, rosette & swaying tassel
-      const tieAlpha = clamp01((r - 0.42) / 0.35);
-      if (tieAlpha > 0.01) {
-        rig.tieBack.group.visible = true;
-        const wallX = side === "left" ? -halfW * 1.04 : halfW * 1.04;
-        const wrapX = tieAnchorX - dir * 0.04;
-
-        const curve = new THREE.CatmullRomCurve3([
-          new THREE.Vector3(wallX, tieAnchorY + 0.05, -0.05),
-          new THREE.Vector3(lerp(wallX, wrapX, 0.5), tieAnchorY - 0.11, tieAnchorZ + 0.22),
-          new THREE.Vector3(wrapX, tieAnchorY, tieAnchorZ + 0.16),
-        ]);
-
-        rig.tieBack.ropeMesh.geometry.dispose();
-        rig.tieBack.ropeMesh.geometry = new THREE.TubeGeometry(curve, 24, 0.032, 10, false);
-
-        rig.tieBack.rosetteGroup.position.set(wrapX, tieAnchorY, tieAnchorZ + 0.18);
-        rig.tieBack.tasselGroup.position.set(wrapX, tieAnchorY, tieAnchorZ + 0.16);
-        rig.tieBack.tasselGroup.rotation.z =
-          Math.sin(t * 0.0022 + phaseOffset) * 0.045 * (1 - r * 0.5);
-      } else {
-        rig.tieBack.group.visible = false;
-      }
-    };
-
-    let raf = 0;
-    const frame = (now: number) => {
-      let r = 0;
-      if (phaseRef.current === "opening") {
-        if (openStartRef.current === null) openStartRef.current = now;
-        r = clamp01((now - openStartRef.current) / OPEN_MS);
-      }
-
-      // Smoothly dissolve materials at the very end of the opening sweep
-      const fadeOut = 1 - clamp01((r - 0.82) / 0.18);
-      velvetMat.opacity = fadeOut;
-      goldMat.opacity = fadeOut;
-
-      updateSide("left", leftCurtain, r, now);
-      updateSide("right", rightCurtain, r, now);
-
-      renderer.render(scene, camera);
-      raf = requestAnimationFrame(frame);
-    };
-
-    raf = requestAnimationFrame(frame);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      normalMap.dispose();
-      roughnessMap.dispose();
-      goldNormalMap.dispose();
-      velvetMat.dispose();
-      goldMat.dispose();
-      leftCurtain.geo.dispose();
-      leftCurtain.edgeGeo.dispose();
-      leftCurtain.hemGeo.dispose();
-      leftCurtain.tieBack.ropeMesh.geometry.dispose();
-      rightCurtain.geo.dispose();
-      rightCurtain.edgeGeo.dispose();
-      rightCurtain.hemGeo.dispose();
-      rightCurtain.tieBack.ropeMesh.geometry.dispose();
-      renderer.dispose();
-      if (renderer.domElement.parentNode === container) {
-        container.removeChild(renderer.domElement);
-      }
-    };
-  }, [phase]);
-
   if (phase === "done") return null;
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Welcome" style={rootStyle(phase)} onClick={skip}>
       <style>{KEYFRAMES}</style>
-      <div ref={mountRef} style={styles.mount} aria-hidden="true" />
-      <h1 style={titleStyle(phase)}>Shadi Maxing</h1>
+
+      <div style={styles.stage} aria-hidden="true" />
+
+      {/* Big beating heart behind the title */}
+      <div style={bigHeartStyle(phase)} aria-hidden="true">
+        💖
+      </div>
+
+      {/* Ambient hearts floating bottom -> top (same elements in both phases, so no restart) */}
+      <div style={styles.layer} aria-hidden="true">
+        {AMBIENT.map((h, i) => (
+          <FloatingHeart key={i} {...h} infinite />
+        ))}
+      </div>
+
+      {/* Title */}
+      <div style={titleStyle(phase)}>
+        <div style={styles.ring} aria-hidden="true">
+          💍
+        </div>
+        <h1 style={styles.h1}>ShadiMaxing</h1>
+        <p style={styles.tagline}>Your dream wedding, made simple</p>
+      </div>
+
+      {/* Opening: big upward rush + radial burst */}
+      {phase === "opening" ? (
+        <>
+          <div style={{ ...styles.layer, zIndex: 3 }} aria-hidden="true">
+            {RUSH.map((h, i) => (
+              <FloatingHeart key={i} {...h} infinite={false} />
+            ))}
+          </div>
+          <div style={{ ...styles.layer, zIndex: 3 }} aria-hidden="true">
+            {BURST.map((h, i) => (
+              <span
+                key={i}
+                style={
+                  {
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    fontFamily: EMOJI_FONT,
+                    fontSize: h.size,
+                    lineHeight: 1,
+                    "--dx": h.dx,
+                    "--dy": h.dy,
+                    "--spin": h.spin,
+                    willChange: "transform, opacity",
+                    animation: `shadiHeartBurst ${h.duration}ms cubic-bezier(0.15, 0.8, 0.3, 1) ${h.delay}ms both`,
+                  } as CSSProperties
+                }
+              >
+                {h.char}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {phase === "closed" ? <div style={styles.hint}>Tap anywhere to begin</div> : null}
+
       <button
         ref={skipRef}
         type="button"

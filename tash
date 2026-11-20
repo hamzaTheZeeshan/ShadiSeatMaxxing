@@ -1,0 +1,170 @@
+[1mdiff --git a/client/src/features/splash/CurtainSplash.tsx b/client/src/features/splash/CurtainSplash.tsx[m
+[1mindex 010de48..e06fdfb 100644[m
+[1m--- a/client/src/features/splash/CurtainSplash.tsx[m
+[1m+++ b/client/src/features/splash/CurtainSplash.tsx[m
+[36m@@ -1,339 +1,158 @@[m
+ import { useEffect, useRef, useState } from "react";[m
+ import type { CSSProperties } from "react";[m
+[31m-import * as THREE from "three";[m
+ import { hasSeenSplash, markSplashSeen, prefersReducedMotion } from "./splashSession";[m
+ [m
+[31m-type Phase = "closed" | "opening" | "done";[m
+[31m-type Side = "left" | "right";[m
+[31m-[m
+[31m-const HOLD_MS = 650;[m
+[31m-const OPEN_MS = 1650;[m
+[32m+[m[32m// NOTE: file/component name kept as CurtainSplash so your existing imports keep working.[m
+[32m+[m[32m// It is now a pure CSS heart-emoji intro (no three.js needed).[m
+ [m
+[31m-const GOLD = "#d4af37";[m
+[31m-const GOLD_LIGHT = "#f8e496";[m
+[31m-const GOLD_DARK = "#8a6712";[m
+[32m+[m[32mtype Phase = "closed" | "opening" | "done";[m
+ [m
+[31m-// --- 3D Cloth & Stage Constants ----------------------------------------------[m
+[31m-const SEG_X = 96; // horizontal cloth resolution per curtain[m
+[31m-const SEG_Y = 64; // vertical cloth resolution per curtain[m
+[31m-const TIE_Y = 0.62; // normalized distance from top (0 = top rail, 1 = floor hem)[m
+[31m-const FOLD_COUNT = 9.5;[m
+[31m-const SWAG_COUNT = 5;[m
+[32m+[m[32mconst HOLD_MS = 1500; // hearts float + title pops in[m
+[32m+[m[32mconst OPEN_MS = 1900; // burst + big rush of hearts, then fade to the app[m
+ [m
+[31m-const KEYFRAMES =[m
+[31m-  "@keyframes shadiSplashTitleIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}" +[m
+[31m-  "@keyframes shadiSplashFade{0%,82%{opacity:1}100%{opacity:0}}";[m
+[31m-[m
+[31m-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));[m
+[31m-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;[m
+[31m-const smooth = (t: number) => t * t * (3 - 2 * t);[m
+[31m-const easeSine = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;[m
+[31m-[m
+[31m-// Width ratio of the gathered curtain at vertical fraction yf (0 = top, 1 = bottom)[m
+[31m-function gatheredWidth(yf: number): number {[m
+[31m-  if (yf < TIE_Y) return lerp(0.32, 0.095, smooth(yf / TIE_Y));[m
+[31m-  return lerp(0.095, 0.24, smooth((yf - TIE_Y) / (1 - TIE_Y)));[m
+[31m-}[m
+[32m+[m[32m// --- Theme (matches HomePage) -------------------------------------------------[m
+[32m+[m[32mconst ACCENT = "#ff2e5b";[m
+[32m+[m[32mconst ROSE_DEEP = "#be123c";[m
+[32m+[m[32mconst BLUSH = "#fff1f3";[m
+[32m+[m[32mconst FONT = "'Poppins', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";[m
+[32m+[m[32mconst EMOJI_FONT = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";[m
+ [m
+[31m-// --- Procedural PBR Textures (Zero external network assets) -----------------[m
+[31m-function createVelvetTextures(): {[m
+[31m-  normalMap: THREE.CanvasTexture;[m
+[31m-  roughnessMap: THREE.CanvasTexture;[m
+[31m-} {[m
+[31m-  const size = 256;[m
+[31m-  const heightField = new Float32Array(size * size);[m
+[31m-[m
+[31m-  // Build organic crushed-velvet + vertical pile micro-height field[m
+[31m-  for (let y = 0; y < size; y++) {[m
+[31m-    for (let x = 0; x < size; x++) {[m
+[31m-      const nx = (x / size) * Math.PI * 2;[m
+[31m-      const ny = (y / size) * Math.PI * 2;[m
+[31m-[m
+[31m-      const pile = Math.sin(nx * 48 + Math.sin(ny * 6) * 2.0) * 0.25;[m
+[31m-      const crush1 = Math.sin(nx * 3 + Math.cos(ny * 4) * 1.8) * 0.4;[m
+[31m-      const crush2 = Math.cos(nx * 7 - ny * 5 + Math.sin(nx * 2 + ny * 3)) * 0.35;[m
+[31m-      heightField[y * size + x] = 0.5 + 0.5 * (pile + crush1 + crush2);[m
+[31m-    }[m
+[31m-  }[m
+[31m-[m
+[31m-  // Convert height field to tangent-space normal map[m
+[31m-  const normCanvas = document.createElement("canvas");[m
+[31m-  normCanvas.width = size;[m
+[31m-  normCanvas.height = size;[m
+[31m-  const nCtx = normCanvas.getContext("2d")!;[m
+[31m-  const nImg = nCtx.createImageData(size, size);[m
+[31m-[m
+[31m-  // Pair with subtle roughness variation[m
+[31m-  const roughCanvas = document.createElement("canvas");[m
+[31m-  roughCanvas.width = size;[m
+[31m-  roughCanvas.height = size;[m
+[31m-  const rCtx = roughCanvas.getContext("2d")!;[m
+[31m-  const rImg = rCtx.createImageData(size, size);[m
+[31m-[m
+[31m-  const strength = 2.4;[m
+[31m-  for (let y = 0; y < size; y++) {[m
+[31m-    const ym = (y - 1 + size) % size;[m
+[31m-    const yp = (y + 1) % size;[m
+[31m-    for (let x = 0; x < size; x++) {[m
+[31m-      const xm = (x - 1 + size) % size;[m
+[31m-      const xp = (x + 1) % size;[m
+[31m-[m
+[31m-      const dX = (heightField[y * size + xp] - heightField[y * size + xm]) * strength;[m
+[31m-      const dY = (heightField[yp * size + x] - heightField[ym * size + x]) * strength;[m
+[31m-      const invLen = 1 / Math.sqrt(dX * dX + dY * dY + 1);[m
+[31m-[m
+[31m-      const idx = (y * size + x) * 4;[m
+[31m-      nImg.data[idx] = Math.round((-dX * invLen * 0.5 + 0.5) * 255);[m
+[31m-      nImg.data[idx + 1] = Math.round((-dY * invLen * 0.5 + 0.5) * 255);[m
+[31m-      nImg.data[idx + 2] = Math.round((invLen * 0.5 + 0.5) * 255);[m
+[31m-      nImg.data[idx + 3] = 255;[m
+[31m-[m
+[31m-      const hVal = heightField[y * size + x];[m
+[31m-      const roughByte = Math.round(lerp(195, 242, hVal)); // 0.76 - 0.95 roughness[m
+[31m-      rImg.data[idx] = roughByte;[m
+[31m-      rImg.data[idx + 1] = roughByte;[m
+[31m-      rImg.data[idx + 2] = roughByte;[m
+[31m-      rImg.data[idx + 3] = 255;[m
+[31m-    }[m
+[31m-  }[m
+[31m-[m
+[31m-  nCtx.putImageData(nImg, 0, 0);[m
+[31m-  rCtx.putImageData(rImg, 0, 0);[m
+[31m-[m
+[31m-  const normalMap = new THREE.CanvasTexture(normCanvas);[m
+[31m-  normalMap.wrapS = THREE.RepeatWrapping;[m
+[31m-  normalMap.wrapT = THREE.RepeatWrapping;[m
+[31m-  normalMap.repeat.set(6, 10);[m
+[31m-[m
+[31m-  const roughnessMap = new THREE.CanvasTexture(roughCanvas);[m
+[31m-  roughnessMap.wrapS = THREE.RepeatWrapping;[m
+[31m-  roughnessMap.wrapT = THREE.RepeatWrapping;[m
+[31m-  roughnessMap.repeat.set(6, 10);[m
+[31m-[m
+[31m-  return { normalMap, roughnessMap };[m
+[31m-}[m
+[32m+[m[32mconst HEARTS = ["❤️", "💖", "💗", "💕", "💘", "💝", "🩷", "💓"];[m
+ [m
+[31m-function createGoldBraidNormalMap(): THREE.CanvasTexture {[m
+[31m-  const size = 128;[m
+[31m-  const canvas = document.createElement("canvas");[m
+[31m-  canvas.width = size;[m
+[31m-  canvas.height = size;[m
+[31m-  const ctx = canvas.getContext("2d")!;[m
+[31m-  const img = ctx.createImageData(size, size);[m
+[31m-[m
+[31m-  for (let y = 0; y < size; y++) {[m
+[31m-    for (let x = 0; x < size; x++) {[m
+[31m-      const u = (x / size) * Math.PI * 2;[m
+[31m-      const v = (y / size) * Math.PI * 2;[m
+[31m-      const weave = Math.sin(u * 12 + v * 12) * 0.5 + Math.cos(u * 12 - v * 12) * 0.5;[m
+[31m-      const idx = (y * size + x) * 4;[m
+[31m-      img.data[idx] = Math.round(128 + weave * 55);[m
+[31m-      img.data[idx + 1] = Math.round(128 - weave * 55);[m
+[31m-      img.data[idx + 2] = 235;[m
+[31m-      img.data[idx + 3] = 255;[m
+[31m-    }[m
+[31m-  }[m
+[31m-  ctx.putImageData(img, 0, 0);[m
+[31m-[m
+[31m-  const tex = new THREE.CanvasTexture(canvas);[m
+[31m-  tex.wrapS = THREE.RepeatWrapping;[m
+[31m-  tex.wrapT = THREE.RepeatWrapping;[m
+[31m-  tex.repeat.set(2, 24);[m
+[31m-  return tex;[m
+[31m-}[m
+[32m+[m[32m// Deterministic pseudo-random so nothing jumps between renders[m
+[32m+[m[32mconst rnd = (i: number, k: number) => {[m
+[32m+[m[32m  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;[m
+[32m+[m[32m  return x - Math.floor(x);[m
+[32m+[m[32m};[m
+[32m+[m[32mconst pick = (i: number, k: number) => HEARTS[Math.floor(rnd(i, k) * HEARTS.length)];[m
+ [m
+[31m-// --- 3D Scalloped Theatre Valance Builder ------------------------------------[m
+[31m-function buildValanceGroup([m
+[31m-  worldW: n
