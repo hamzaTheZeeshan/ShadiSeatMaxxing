@@ -6,6 +6,7 @@ export const NOTE_MAX_LENGTH = 200;
 export const TOGETHER_MIN_GUESTS = 2;
 export const TOGETHER_MAX_GUESTS = 20;
 export const DEFAULT_RULE_WEIGHT = 5;
+const DEFAULT_ELDERS_NEAR_EXITS = 5;
 
 const ZONE_VALUES = ["men", "women", "family", "mixed"] as const;
 const RULE_KIND_VALUES = ["together", "apart"] as const;
@@ -64,7 +65,9 @@ export const settingsSchema = z.object({
   // .default keeps previously saved constraint data (without this field) valid.
   sofas_for_seniors_only: z.boolean().default(true),
   weights: z.object({
-    elders_away_from_speakers: weightField,
+    // .default keeps data saved before this weight existed valid; the old
+    // elders_away_from_speakers key is ignored (unknown keys are stripped).
+    elders_near_exits: weightField.default(DEFAULT_ELDERS_NEAR_EXITS),
     seniors_near_stage: weightField,
     balance_sides: weightField,
     similar_ages: weightField,
@@ -84,7 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   kids_table: false,
   sofas_for_seniors_only: true,
   weights: {
-    elders_away_from_speakers: 5,
+    elders_near_exits: DEFAULT_ELDERS_NEAR_EXITS,
     seniors_near_stage: 3,
     balance_sides: 3,
     similar_ages: 2,

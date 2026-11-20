@@ -70,7 +70,7 @@ const TOGGLES: ToggleRow[] = [
     read: (s) => s.kids_table,
     patch: (v) => ({ kids_table: v }),
   },
-    {
+  {
     id: "sofas_for_seniors_only",
     label: "Sofas for seniors only",
     help: "Only senior guests may be seated on sofas. Gender zones still apply to sofas.",
@@ -98,18 +98,11 @@ const DISTANCES: DistanceRow[] = [
 
 const WEIGHTS: WeightRow[] = [
   {
-    id: "elders_away_from_speakers",
-    label: "Elders away from speakers",
-    help: "Higher means older guests are kept further from loudspeakers.",
-    read: (w) => w.elders_away_from_speakers,
-    patch: (w, v) => ({ weights: { ...w, elders_away_from_speakers: v } }),
-  },
-  {
-    id: "seniors_near_stage",
-    label: "Seniors near the stage",
-    help: "Higher means senior guests are placed closer to the stage.",
-    read: (w) => w.seniors_near_stage,
-    patch: (w, v) => ({ weights: { ...w, seniors_near_stage: v } }),
+    id: "elders_near_exits",
+    label: "Elders near exits",
+    help: "Higher means senior guests are placed closer to entrances and exits.",
+    read: (w) => w.elders_near_exits,
+    patch: (w, v) => ({ weights: { ...w, elders_near_exits: v } }),
   },
   {
     id: "balance_sides",
