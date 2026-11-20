@@ -12,7 +12,7 @@ const PASSES: ReadonlyArray<ReadonlyArray<HallObject["type"]>> = [
   ["service_area"],
   ["dance_floor"],
   ["stage"],
-  ["table"],
+  ["table", "sofa"],
   ["entrance", "exit"],
 ];
 

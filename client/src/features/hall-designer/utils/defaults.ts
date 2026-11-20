@@ -60,6 +60,14 @@ export function createObject(tool: CreationTool, center: Point): HallObject {
         height: 1.5,
         capacity: 4,
       };
+    case "sofa":
+      return {
+        ...base("sofa"),
+        type: "sofa",
+        width: 2.0,
+        height: 0.9,
+        capacity: 3,
+      };
     case "stage":
       return { ...base("stage"), type: "stage", width: 12, height: 4 };
     case "dance_floor":

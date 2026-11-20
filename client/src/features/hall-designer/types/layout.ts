@@ -1,5 +1,5 @@
 export type HallObjectType =
-  | "wall" | "table" | "entrance" | "exit"
+  | "wall" | "table" | "sofa" | "entrance" | "exit"
   | "stage" | "dance_floor" | "restricted_area" | "service_area";
 
 export interface Hall {
@@ -34,6 +34,13 @@ export interface RectTableObject extends BaseObject {
 
 export type TableObject = RoundTableObject | RectTableObject;
 
+export interface SofaObject extends BaseObject {
+  type: "sofa";
+  width: number;
+  height: number;
+  capacity: number;
+}
+
 export interface RectObject extends BaseObject {
   type: "stage" | "dance_floor" | "restricted_area" | "service_area";
   width: number;
@@ -45,7 +52,7 @@ export interface OpeningObject extends BaseObject {
   width: number;
 }
 
-export type HallObject = TableObject | RectObject | OpeningObject;
+export type HallObject = TableObject | SofaObject | RectObject | OpeningObject;
 
 export interface HallLayout {
   schema_version: 1;
@@ -61,5 +68,6 @@ export interface Viewport {
 
 export type CreationTool =
   | "table_round" | "table_rect" | "table_square"
+  | "sofa"
   | "stage" | "dance_floor" | "restricted_area" | "service_area"
   | "entrance" | "exit";

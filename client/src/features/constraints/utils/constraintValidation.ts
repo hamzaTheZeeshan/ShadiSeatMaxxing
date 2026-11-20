@@ -10,6 +10,19 @@ export interface ConstraintIssue {
   ruleId?: string;
 }
 
+export interface SofaSummary {
+  id: string;
+  capacity: number;
+}
+
+/** LayoutSummary plus the sofas in the hall (add `sofas` to layoutSummary.ts). */
+export type ValidationLayout = LayoutSummary & {
+  sofas?: ReadonlyArray<SofaSummary>;
+};
+
+/** guest id -> id of the table or sofa the guest is seated at. */
+export type SeatAssignments = ReadonlyMap<string, string>;
+
 type SeatGender = "male" | "female";
 
 function assertNever(value: never): never {
@@ -28,6 +41,12 @@ function zoneAllows(zone: Zone, gender: SeatGender): boolean {
     default:
       return assertNever(zone);
   }
+}
+
+// Guests whose gender is neither "male" nor "female" are never blocked by a gender zone.
+function violatesZone(zone: Zone, gender: string): boolean {
+  if (gender === "male" || gender === "female") return !zoneAllows(zone, gender);
+  return false;
 }
 
 function createUnionFind() {
@@ -71,12 +90,16 @@ function listNames(names: string[]): string {
 export function validateConstraints(
   data: ConstraintData,
   guests: ReadonlyArray<Guest>,
-  layout: LayoutSummary,
+  layout: ValidationLayout,
+  assignments?: SeatAssignments,
 ): ConstraintIssue[] {
   const issues: ConstraintIssue[] = [];
   const { settings } = data;
   const byId = new Map<string, Guest>();
   for (const g of guests) byId.set(g.id, g);
+  const sofas = layout.sofas ?? [];
+  const sofaById = new Map<string, SofaSummary>();
+  for (const s of sofas) sofaById.set(s.id, s);
 
   // 1. Unknown guests
   for (const rule of data.rules) {
@@ -152,7 +175,7 @@ export function validateConstraints(
     }
   }
 
-  // 3. Groups larger than any table
+  // 3. Groups larger than any table (sofas are small and seniors-only, so tables only)
   const maxCapacity = Math.max(0, ...layout.tables.map((t) => t.capacity));
   if (groups.length > 0 && layout.tables.length === 0) {
     issues.push({
@@ -172,7 +195,7 @@ export function validateConstraints(
     }
   }
 
-  // 4 + 5. Gender zones
+  // 4 + 5. Gender zones (sofas use the same zone map as tables)
   if (settings.enforce_gender_zones) {
     let maleSeats = 0;
     let femaleSeats = 0;
@@ -181,20 +204,29 @@ export function validateConstraints(
       if (zoneAllows(zone, "male")) maleSeats += table.capacity;
       if (zoneAllows(zone, "female")) femaleSeats += table.capacity;
     }
+    for (const sofa of sofas) {
+      const zone = zoneForTable(data.zones, sofa.id);
+      if (zoneAllows(zone, "male")) maleSeats += sofa.capacity;
+      if (zoneAllows(zone, "female")) femaleSeats += sofa.capacity;
+    }
+    const where =
+      sofas.length > 0 ? "men, family or mixed tables and sofas" : "men, family or mixed tables";
+    const whereWomen =
+      sofas.length > 0 ? "women, family or mixed tables and sofas" : "women, family or mixed tables";
     const maleCount = guests.filter((g) => g.gender === "male").length;
     const femaleCount = guests.filter((g) => g.gender === "female").length;
     if (maleCount > maleSeats) {
       issues.push({
         id: "gender-seats:male",
         severity: "error",
-        message: `${maleCount} male guests but only ${maleSeats} seats at men, family or mixed tables.`,
+        message: `${maleCount} male guests but only ${maleSeats} seats at ${where}.`,
       });
     }
     if (femaleCount > femaleSeats) {
       issues.push({
         id: "gender-seats:female",
         severity: "error",
-        message: `${femaleCount} female guests but only ${femaleSeats} seats at women, family or mixed tables.`,
+        message: `${femaleCount} female guests but only ${femaleSeats} seats at ${whereWomen}.`,
       });
     }
     for (const group of groups) {
@@ -232,25 +264,39 @@ export function validateConstraints(
     });
   }
 
-  // 7. Stale zones
-  const tableIds = new Set(layout.tables.map((t) => t.id));
-  for (const tableId of Object.keys(data.zones)) {
-    if (tableIds.has(tableId)) continue;
+  // 7. Stale zones (a zone may belong to a table or a sofa)
+  const seatObjectIds = new Set<string>([
+    ...layout.tables.map((t) => t.id),
+    ...sofas.map((s) => s.id),
+  ]);
+  for (const objectId of Object.keys(data.zones)) {
+    if (seatObjectIds.has(objectId)) continue;
     issues.push({
-      id: `stale-zone:${tableId}`,
+      id: `stale-zone:${objectId}`,
       severity: "warning",
-      message: `A zone is set for table "${tableId}", which is not in the hall.`,
+      message: `A zone is set for table "${objectId}", which is not in the hall.`,
     });
   }
 
   // 8. Capacity
-  const totalSeats = layout.tables.reduce((sum, t) => sum + t.capacity, 0);
+  const tableSeats = layout.tables.reduce((sum, t) => sum + t.capacity, 0);
+  const sofaSeats = sofas.reduce((sum, s) => sum + s.capacity, 0);
+  const totalSeats = tableSeats + sofaSeats;
   if (guests.length > totalSeats) {
     issues.push({
       id: "guests-exceed-seats",
       severity: "warning",
       message: `${guests.length} guests but only ${totalSeats} seats.`,
     });
+  } else if (settings.sofas_for_seniors_only && sofaSeats > 0) {
+    const nonSeniors = guests.filter((g) => g.age_band !== "senior").length;
+    if (nonSeniors > tableSeats) {
+      issues.push({
+        id: "non-seniors-exceed-table-seats",
+        severity: "warning",
+        message: `${nonSeniors} guests are not seniors, but only ${tableSeats} seats are outside the seniors-only sofas.`,
+      });
+    }
   }
 
   // 9. Kids table
@@ -262,6 +308,48 @@ export function validateConstraints(
         severity: "warning",
         message: `Kids table is on, but only ${children} guests are aged 5-12.`,
       });
+    }
+  }
+
+  // 10. Sofa assignments (only when the caller supplies seat assignments)
+  if (assignments !== undefined && sofas.length > 0) {
+    const seatedOnSofa = new Map<string, number>();
+    for (const [guestId, seatId] of assignments) {
+      const sofa = sofaById.get(seatId);
+      if (sofa === undefined) continue;
+      seatedOnSofa.set(sofa.id, (seatedOnSofa.get(sofa.id) ?? 0) + 1);
+
+      const guest = byId.get(guestId);
+      if (guest === undefined) continue;
+
+      if (settings.sofas_for_seniors_only && guest.age_band !== "senior") {
+        issues.push({
+          id: `sofa-non-senior:${sofa.id}:${guestId}`,
+          severity: "warning",
+          message: `${guest.name} is not a senior but is seated on sofa "${sofa.id}", which is reserved for seniors.`,
+        });
+      }
+
+      if (settings.enforce_gender_zones) {
+        const zone = zoneForTable(data.zones, sofa.id);
+        if (violatesZone(zone, guest.gender)) {
+          issues.push({
+            id: `sofa-zone:${sofa.id}:${guestId}`,
+            severity: "error",
+            message: `${guest.name} is seated on sofa "${sofa.id}", which is in the ${zone} zone.`,
+          });
+        }
+      }
+    }
+    for (const [sofaId, count] of seatedOnSofa) {
+      const sofa = sofaById.get(sofaId);
+      if (sofa !== undefined && count > sofa.capacity) {
+        issues.push({
+          id: `sofa-over-capacity:${sofaId}`,
+          severity: "error",
+          message: `${count} guests are assigned to sofa "${sofaId}", which seats ${sofa.capacity}.`,
+        });
+      }
     }
   }
 

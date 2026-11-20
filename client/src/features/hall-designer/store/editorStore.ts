@@ -139,6 +139,14 @@ function applyPatch(obj: HallObject, patch: ObjectPatch): HallObject | null {
       if (!isValidSize(width)) return null;
       return { ...obj, x, y, rotation, width };
     }
+        case "sofa": {
+      const capacity = patch.capacity ?? obj.capacity;
+      if (!isValidCapacity(capacity)) return null;
+      const width = patch.width ?? obj.width;
+      const height = patch.height ?? obj.height;
+      if (!isValidSize(width) || !isValidSize(height)) return null;
+      return { ...obj, x, y, rotation, width, height, capacity };
+    }
     case "stage":
     case "dance_floor":
     case "restricted_area":

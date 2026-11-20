@@ -28,31 +28,34 @@ export default function TableZonesPanel() {
 
   const summary = useMemo(() => summarizeLayout(objects), [objects]);
 
+  // Tables and sofas share one zone map and one list of seating objects.
+  const seating = useMemo(() => [...summary.tables, ...summary.sofas], [summary]);
+
   // pruneZones is a no-op when nothing is stale, so this cannot loop.
   useEffect(() => {
-    pruneZones(summary.tables.map((t) => t.id));
-  }, [summary, pruneZones]);
+    pruneZones(seating.map((t) => t.id));
+  }, [seating, pruneZones]);
 
   return (
     <section style={styles.section} aria-labelledby="table-zones-heading">
       <h2 id="table-zones-heading" style={styles.heading}>
-        Table zones
+        Table and sofa zones
       </h2>
-      <p style={styles.help}>Tables without a zone are Mixed.</p>
-      {summary.tables.length === 0 ? (
+      <p style={styles.help}>Tables and sofas without a zone are Mixed.</p>
+      {seating.length === 0 ? (
         <p style={styles.empty}>
-          No tables yet. Add tables in the <Link to="/designer">Hall Designer</Link>.
+          No tables or sofas yet. Add some in the <Link to="/designer">Hall Designer</Link>.
         </p>
       ) : (
         <>
           <div style={styles.bulk}>
-            <label htmlFor="zones-bulk">Set all tables to</label>
+            <label htmlFor="zones-bulk">Set all tables and sofas to</label>
             <select
               id="zones-bulk"
               value=""
               onChange={(e) => {
                 const zone = parseOption(ZONES, e.target.value);
-                if (zone) setZones(summary.tables.map((t) => t.id), zone);
+                if (zone) setZones(seating.map((t) => t.id), zone);
               }}
             >
               <option value="">Choose zone…</option>
@@ -64,16 +67,16 @@ export default function TableZonesPanel() {
             </select>
           </div>
           <ul style={styles.list}>
-            {summary.tables.map((table) => (
-              <li key={table.id} style={styles.item}>
-                <span style={styles.tableName}>{table.label}</span>
-                <span style={styles.capacity}>{table.capacity} seats</span>
+            {seating.map((item) => (
+              <li key={item.id} style={styles.item}>
+                <span style={styles.tableName}>{item.label}</span>
+                <span style={styles.capacity}>{item.capacity} seats</span>
                 <select
-                  aria-label={`Zone for ${table.label}`}
-                  value={zoneForTable(zones, table.id)}
+                  aria-label={`Zone for ${item.label}`}
+                  value={zoneForTable(zones, item.id)}
                   onChange={(e) => {
                     const zone = parseOption(ZONES, e.target.value);
-                    if (zone) setZone(table.id, zone);
+                    if (zone) setZone(item.id, zone);
                   }}
                 >
                   {ZONES.map((z) => (

@@ -28,12 +28,14 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${JSON.stringify(value)}`);
 }
 
-type Kind = "table" | "stage" | "dance_floor" | "restricted_area" | "service_area" | "opening";
+type Kind = "table" | "sofa" | "stage" | "dance_floor" | "restricted_area" | "service_area" | "opening";
 
 function kindOf(obj: HallObject): Kind {
   switch (obj.type) {
     case "table":
       return "table";
+    case "sofa":
+      return "sofa";
     case "stage":
       return "stage";
     case "dance_floor":
@@ -50,10 +52,12 @@ function kindOf(obj: HallObject): Kind {
   }
 }
 
-function nameOf(obj: HallObject, tableNumbers: Map<string, number>): string {
+function nameOf(obj: HallObject, tableNumbers: Map<string, number>, sofaNumbers: Map<string, number>): string {
   switch (obj.type) {
     case "table":
       return `T${tableNumbers.get(obj.id) ?? "?"}`;
+    case "sofa":
+      return `S${sofaNumbers.get(obj.id) ?? "?"}`;
     case "stage":
       return "Stage";
     case "dance_floor":
@@ -82,11 +86,16 @@ interface Entry {
 
 function buildEntries(objects: readonly HallObject[]): Entry[] {
   const tableNumbers = new Map<string, number>();
-  let n = 0;
+  const sofaNumbers = new Map<string, number>();
+  let t = 0;
+  let s = 0;
   for (const o of objects) {
     if (o.type === "table") {
-      n += 1;
-      tableNumbers.set(o.id, n);
+      t += 1;
+      tableNumbers.set(o.id, t);
+    } else if (o.type === "sofa") {
+      s += 1;
+      sofaNumbers.set(o.id, s);
     }
   }
   return objects.map((obj) => {
@@ -94,7 +103,7 @@ function buildEntries(objects: readonly HallObject[]): Entry[] {
     return {
       obj,
       kind: kindOf(obj),
-      label: nameOf(obj, tableNumbers),
+      label: nameOf(obj, tableNumbers, sofaNumbers),
       body,
       footprint: obj.type === "table" ? tableFootprint(obj) : body,
     };
@@ -105,6 +114,7 @@ function issue(code: IssueCode, severity: Severity, objectIds: string[], message
   return { id: `${code}:${[...objectIds].sort().join("|")}`, code, severity, objectIds, message };
 }
 
+// Only called with `a` being a stage / dance floor / service area / restricted area / opening.
 function nonTableOverlaps(a: Kind, b: Kind): boolean {
   switch (a) {
     case "stage":
@@ -113,6 +123,7 @@ function nonTableOverlaps(a: Kind, b: Kind): boolean {
     case "service_area":
       return b === "stage";
     case "table":
+    case "sofa":
     case "restricted_area":
     case "opening":
       return false;
@@ -142,10 +153,11 @@ function checkTablePair(table: Entry, other: Entry, out: ValidationIssue[]): voi
       }
       return;
     }
+    case "sofa":
     case "stage":
     case "dance_floor":
     case "service_area":
-      if (polygonsOverlap(table.body, other.body)) {
+      if (polygonsOverlap(table.footprint, other.body)) {
         out.push(issue("overlap", "error", ids, `${table.label} overlaps ${other.label}.`));
       }
       return;
@@ -177,13 +189,62 @@ function checkTablePair(table: Entry, other: Entry, out: ValidationIssue[]): voi
   }
 }
 
+// `other` is never a table here (table pairs are handled by checkTablePair).
+function checkSofaPair(sofa: Entry, other: Entry, out: ValidationIssue[]): void {
+  const ids = [sofa.obj.id, other.obj.id];
+  switch (other.kind) {
+    case "table":
+      return;
+    case "sofa":
+    case "stage":
+    case "dance_floor":
+    case "service_area":
+      if (polygonsOverlap(sofa.body, other.body)) {
+        out.push(issue("overlap", "error", ids, `${sofa.label} overlaps ${other.label}.`));
+      }
+      return;
+    case "restricted_area":
+      if (polygonsOverlap(sofa.body, other.body)) {
+        out.push(issue("overlap", "error", ids, `${sofa.label} overlaps a Restricted Area.`));
+      }
+      return;
+    case "opening":
+      if (polygonsOverlap(sofa.body, other.body)) {
+        out.push(issue("overlap", "error", ids, `${sofa.label} blocks the ${other.label}.`));
+      }
+      return;
+    default:
+      return assertNever(other.kind);
+  }
+}
+
+function rank(kind: Kind): number {
+  switch (kind) {
+    case "table":
+      return 0;
+    case "sofa":
+      return 1;
+    case "stage":
+    case "dance_floor":
+    case "restricted_area":
+    case "service_area":
+    case "opening":
+      return 2;
+    default:
+      return assertNever(kind);
+  }
+}
+
 function checkPair(a: Entry, b: Entry, out: ValidationIssue[]): void {
-  const swap = a.kind !== "table" && b.kind === "table";
+  const swap = rank(a.kind) > rank(b.kind);
   const first = swap ? b : a;
   const second = swap ? a : b;
   switch (first.kind) {
     case "table":
       checkTablePair(first, second, out);
+      return;
+    case "sofa":
+      checkSofaPair(first, second, out);
       return;
     case "stage":
     case "dance_floor":

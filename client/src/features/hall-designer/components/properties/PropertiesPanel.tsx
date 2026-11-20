@@ -158,6 +158,8 @@ function typeName(object: HallObject): string {
         default:
           return assertNever(object);
       }
+    case "sofa":
+      return "Sofa";
     case "stage":
       return "Stage";
     case "dance_floor":
@@ -217,6 +219,21 @@ function TypeFields({ object, commit }: TypeFieldsProps) {
         default:
           return assertNever(object);
       }
+    case "sofa":
+      return (
+        <>
+          <NumberField label="Width (m)" value={object.width} min={MIN_SIZE} onCommit={(v) => commit({ width: v })} />
+          <NumberField label="Height (m)" value={object.height} min={MIN_SIZE} onCommit={(v) => commit({ height: v })} />
+          <NumberField
+            label="Capacity (seats)"
+            value={object.capacity}
+            min={MIN_CAPACITY}
+            max={MAX_CAPACITY}
+            integer
+            onCommit={(v) => commit({ capacity: v })}
+          />
+        </>
+      );
     case "stage":
     case "dance_floor":
     case "restricted_area":
@@ -227,7 +244,7 @@ function TypeFields({ object, commit }: TypeFieldsProps) {
           <NumberField label="Height (m)" value={object.height} min={MIN_SIZE} onCommit={(v) => commit({ height: v })} />
         </>
       );
-    case "entrance":
+        case "entrance":
     case "exit":
       return <NumberField label="Width (m)" value={object.width} min={MIN_SIZE} onCommit={(v) => commit({ width: v })} />;
     default:
@@ -237,11 +254,13 @@ function TypeFields({ object, commit }: TypeFieldsProps) {
 
 function ObjectPanel({ object }: { object: HallObject }) {
   const id = object.id;
-  // Table number = position among tables (order in objects[]) + 1.
-  const tableNumber = useEditorStore((s) => {
+  const type = object.type;
+  // Number = position among objects of the same type (order in objects[]) + 1. Only tables and sofas use it.
+  const seatNumber = useEditorStore((s) => {
+    if (type !== "table" && type !== "sofa") return null;
     let n = 0;
     for (const o of s.objects) {
-      if (o.type === "table") {
+      if (o.type === type) {
         n += 1;
         if (o.id === id) return n;
       }
@@ -250,7 +269,11 @@ function ObjectPanel({ object }: { object: HallObject }) {
   });
 
   const commit = (patch: ObjectPatch) => useEditorStore.getState().commitObjectUpdate(id, patch);
-  const heading = object.type === "table" && tableNumber !== null ? `T${tableNumber} · ${typeName(object)}` : typeName(object);
+  const prefix = type === "table" ? "T" : "S";
+  const heading =
+    seatNumber !== null && (type === "table" || type === "sofa")
+      ? `${prefix}${seatNumber} · ${typeName(object)}`
+      : typeName(object);
 
   return (
     <>

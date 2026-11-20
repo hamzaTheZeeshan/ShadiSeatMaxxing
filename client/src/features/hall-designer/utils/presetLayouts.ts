@@ -13,6 +13,7 @@ export interface HallPreset {
   name: string;
   description: string;
   tableCount: number;
+  /** Table seats plus sofa seats. */
   guestCount: number;
   layout: HallLayout;
 }
@@ -33,6 +34,10 @@ interface GridOpts {
 }
 
 const r2 = (v: number): number => Math.round(v * 100) / 100;
+
+const SOFA_WIDTH = 2;
+const SOFA_HEIGHT = 0.9;
+const SOFA_CAPACITY = 3;
 
 function builder(prefix: string) {
   const objects: HallObject[] = [];
@@ -88,6 +93,28 @@ function builder(prefix: string) {
         }),
       );
     },
+    sofa(
+      x: number, y: number,
+      width = SOFA_WIDTH, height = SOFA_HEIGHT, capacity = SOFA_CAPACITY,
+      rotation = 0,
+    ): void {
+      objects.push({
+        id: nextId("sofa"), type: "sofa",
+        x, y, rotation, width, height, capacity,
+      });
+    },
+    sofaGrid(
+      g: GridOpts,
+      width = SOFA_WIDTH, height = SOFA_HEIGHT, capacity = SOFA_CAPACITY,
+      rotation = 0,
+    ): void {
+      eachCell(g, (x, y) =>
+        objects.push({
+          id: nextId("sofa"), type: "sofa",
+          x, y, rotation, width, height, capacity,
+        }),
+      );
+    },
     area(
       type: RectObject["type"], x: number, y: number,
       width: number, height: number, rotation = 0,
@@ -118,6 +145,8 @@ function makePreset(
     if (o.type === "table") {
       tableCount += 1;
       guestCount += o.capacity;
+    } else if (o.type === "sofa") {
+      guestCount += o.capacity;
     }
   }
   return {
@@ -133,6 +162,9 @@ function classicBanquet(): HallPreset {
   b.area("stage", 15, 2.5, 10, 3);
   b.area("dance_floor", 15, 7.5, 8, 6);
   b.area("service_area", 27.5, 2, 5, 3);
+  // senior sofas beside the stage
+  b.sofaGrid({ cols: 3, rows: 1, x0: 3.2, y0: 2.2, dx: 2.5, dy: 0 });
+  b.sofa(22.5, 2.2);
   b.round(5, 7.5, 1.2, 10);
   b.round(25, 7.5, 1.2, 10);
   b.roundGrid(
@@ -144,7 +176,7 @@ function classicBanquet(): HallPreset {
   b.opening("exit", 30, 10, 3, 90);
   return makePreset(
     "classic-banquet", "Classic Banquet Hall",
-    "Standard 30 × 20 m rectangular hall with a stage, central dance floor and a clear entrance aisle.",
+    "Standard 30 × 20 m rectangular hall with a stage, central dance floor, a clear entrance aisle and four sofas beside the stage for elders.",
     30, 20, b.objects,
   );
 }
@@ -172,6 +204,9 @@ function royalBallroom(): HallPreset {
   b.area("dance_floor", 25, 13, 14, 10);
   b.area("service_area", 4, 3, 6, 4);
   b.area("service_area", 46, 3, 6, 4);
+  // senior sofas flanking the stage
+  b.sofaGrid({ cols: 3, rows: 1, x0: 9.5, y0: 2.5, dx: 3, dy: 0 });
+  b.sofaGrid({ cols: 3, rows: 1, x0: 34.5, y0: 2.5, dx: 3, dy: 0 });
   b.roundGrid({ cols: 3, rows: 4, x0: 5.5, y0: 8, dx: 3.5, dy: 4 }, 1.3, 10);
   b.roundGrid({ cols: 3, rows: 4, x0: 37.5, y0: 8, dx: 3.5, dy: 4 }, 1.3, 10);
   b.roundGrid({ cols: 8, rows: 2, x0: 6, y0: 25, dx: 5.4, dy: 5 }, 1.3, 10);
@@ -180,7 +215,7 @@ function royalBallroom(): HallPreset {
   b.opening("exit", 50, 17.5, 4, 90);
   return makePreset(
     "royal-ballroom", "Royal Ballroom",
-    "Large 50 × 35 m ballroom with a wide stage, grand dance floor and 400 guests.",
+    "Large 50 × 35 m ballroom with a wide stage, grand dance floor, 400 table seats and six senior sofas beside the stage.",
     50, 35, b.objects,
   );
 }
@@ -230,6 +265,9 @@ function outdoorLawn(): HallPreset {
   b.area("dance_floor", 22.5, 12, 10, 8);
   b.area("service_area", 40, 3, 6, 4);
   b.area("restricted_area", 5, 3, 6, 4);
+  // shaded senior sofas beside the stage
+  b.sofaGrid({ cols: 2, rows: 1, x0: 10.5, y0: 2.5, dx: 3, dy: 0 });
+  b.sofaGrid({ cols: 2, rows: 1, x0: 31.5, y0: 2.5, dx: 3, dy: 0 });
   b.roundGrid({ cols: 2, rows: 2, x0: 8, y0: 9, dx: 4, dy: 4 }, 1.2, 8);
   b.roundGrid({ cols: 2, rows: 2, x0: 33, y0: 9, dx: 4, dy: 4 }, 1.2, 8);
   b.roundGrid(
@@ -241,7 +279,7 @@ function outdoorLawn(): HallPreset {
   b.opening("exit", 45, 15, 4, 90);
   return makePreset(
     "outdoor-lawn", "Outdoor Lawn",
-    "Open-air 45 × 30 m lawn with staggered tables, a catering tent and a generator zone.",
+    "Open-air 45 × 30 m lawn with staggered tables, four senior sofas by the stage, a catering tent and a generator zone.",
     45, 30, b.objects,
   );
 }
@@ -269,6 +307,9 @@ function courtyardMehndi(): HallPreset {
   b.area("dance_floor", 20, 14, 10, 10);
   b.area("restricted_area", 5, 3, 6, 4); // bridal green room
   b.area("service_area", 35, 3, 6, 4);
+  // two rows of senior sofas flanking the stage
+  b.sofaGrid({ cols: 1, rows: 2, x0: 11, y0: 2.5, dx: 0, dy: 1.7 });
+  b.sofaGrid({ cols: 1, rows: 2, x0: 29, y0: 2.5, dx: 0, dy: 1.7 });
   b.roundGrid({ cols: 2, rows: 4, x0: 6, y0: 8, dx: 4, dy: 4 }, 1.2, 8);
   b.roundGrid({ cols: 2, rows: 4, x0: 30, y0: 8, dx: 4, dy: 4 }, 1.2, 8);
   b.roundGrid(
@@ -280,7 +321,7 @@ function courtyardMehndi(): HallPreset {
   b.opening("exit", 40, 14, 3, 90);
   return makePreset(
     "courtyard-mehndi", "Courtyard Mehndi Hall",
-    "Central dance floor surrounded by tables on both sides, with a green room.",
+    "Central dance floor surrounded by tables on both sides, with a green room and four sofas flanking the stage.",
     40, 28, b.objects,
   );
 }

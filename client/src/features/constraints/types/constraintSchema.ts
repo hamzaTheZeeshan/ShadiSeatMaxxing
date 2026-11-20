@@ -61,6 +61,8 @@ export const settingsSchema = z.object({
   vip_near_stage: z.boolean(),
   vip_max_distance_m: distanceField,
   kids_table: z.boolean(),
+  // .default keeps previously saved constraint data (without this field) valid.
+  sofas_for_seniors_only: z.boolean().default(true),
   weights: z.object({
     elders_away_from_speakers: weightField,
     seniors_near_stage: weightField,
@@ -80,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   vip_near_stage: true,
   vip_max_distance_m: 12,
   kids_table: false,
+  sofas_for_seniors_only: true,
   weights: {
     elders_away_from_speakers: 5,
     seniors_near_stage: 3,
@@ -167,6 +170,7 @@ export const DEFAULT_CONSTRAINT_DATA: ConstraintData = {
   rules: [],
 };
 
+// Works for any seating object id (tables and sofas share the same zone map).
 export function zoneForTable(zones: Readonly<Record<string, Zone>>, tableId: string): Zone {
   const zone = Object.prototype.hasOwnProperty.call(zones, tableId) ? zones[tableId] : undefined;
   return zone ?? DEFAULT_ZONE;

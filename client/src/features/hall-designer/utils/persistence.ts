@@ -8,6 +8,7 @@ export const STORAGE_KEY = "shadi-maxing:layout:v1";
 const SUPPORTED_VERSION = 1;
 const OBJECT_TYPES: readonly string[] = [
   "table",
+  "sofa",
   "entrance",
   "exit",
   "stage",

@@ -70,6 +70,13 @@ const TOGGLES: ToggleRow[] = [
     read: (s) => s.kids_table,
     patch: (v) => ({ kids_table: v }),
   },
+    {
+    id: "sofas_for_seniors_only",
+    label: "Sofas for seniors only",
+    help: "Only senior guests may be seated on sofas. Gender zones still apply to sofas.",
+    read: (s) => s.sofas_for_seniors_only,
+    patch: (v) => ({ sofas_for_seniors_only: v }),
+  },
 ];
 
 const DISTANCES: DistanceRow[] = [

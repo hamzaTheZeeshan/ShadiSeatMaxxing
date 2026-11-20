@@ -52,6 +52,8 @@ function configFor(object: HallObject): Config {
         default:
           return assertNever(object);
       }
+      case "sofa":
+      return { anchors: ALL_ANCHORS, keepRatio: false, minWidth: MIN_SIZE, minHeight: MIN_SIZE };  
     case "stage":
     case "dance_floor":
     case "restricted_area":
@@ -81,6 +83,11 @@ function resizePatch(object: HallObject, sx: number, sy: number): ObjectPatch {
         default:
           return assertNever(object);
       }
+        case "sofa":
+      return {
+        width: Math.max(MIN_SIZE, r6(object.width * sx)),
+        height: Math.max(MIN_SIZE, r6(object.height * sy)),
+      };  
     case "stage":
     case "dance_floor":
     case "restricted_area":

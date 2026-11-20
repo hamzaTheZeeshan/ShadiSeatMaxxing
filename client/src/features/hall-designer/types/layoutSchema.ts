@@ -49,6 +49,14 @@ const tableSchema = z.discriminatedUnion("shape", [
   rectTableSchema,
 ]);
 
+const sofaSchema = z.object({
+  ...baseShape,
+  type: z.literal("sofa"),
+  width: dimension,
+  height: dimension,
+  capacity,
+});
+
 const rectObjectSchema = <T extends RectObject["type"]>(type: T) =>
   z.object({
     ...baseShape,
@@ -68,6 +76,7 @@ export const hallObjectSchema: z.ZodType<HallObject> = z.discriminatedUnion(
   "type",
   [
     tableSchema,
+    sofaSchema,
     rectObjectSchema("stage"),
     rectObjectSchema("dance_floor"),
     rectObjectSchema("restricted_area"),

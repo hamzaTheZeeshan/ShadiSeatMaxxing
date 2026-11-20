@@ -51,6 +51,7 @@ export function objectPolygon(obj: HallObject): Polygon {
         default:
           return assertNever(obj);
       }
+    case "sofa":
     case "stage":
     case "dance_floor":
     case "restricted_area":

@@ -7,6 +7,7 @@ const TOOLS = [
   { tool: "table_round", label: "Round Table" },
   { tool: "table_rect", label: "Rectangular Table" },
   { tool: "table_square", label: "Square Table" },
+  { tool: "sofa", label: "Sofa" },
   { tool: "stage", label: "Stage" },
   { tool: "dance_floor", label: "Dance Floor" },
   { tool: "restricted_area", label: "Restricted Area" },

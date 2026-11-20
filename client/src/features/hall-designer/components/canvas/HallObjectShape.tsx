@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from "react";
-import { Circle, Group, Rect, Text } from "react-konva";
+import { Circle, Group, Line, Rect, Text } from "react-konva";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { HallObject } from "../../types/layout";
@@ -21,6 +21,11 @@ const ERROR_STROKE = "#dc2626";
 const WARNING_STROKE = "#d97706";
 const ISSUE_STROKE_WIDTH = 2.5;
 
+// Sofa: plush rose body, darker backrest strip, thin cushion dividers.
+const SOFA_BACKREST_FILL = "#db2777";
+const SOFA_CUSHION_STROKE = "#9d174d";
+const SOFA_BACKREST_RATIO = 0.3;
+
 interface Style {
   fill: string;
   stroke: string;
@@ -30,6 +35,8 @@ function styleFor(object: HallObject): Style {
   switch (object.type) {
     case "table":
       return { fill: "#ffffff", stroke: "#1f2937" };
+    case "sofa":
+      return { fill: "#f9a8d4", stroke: "#9d174d" };
     case "stage":
       return { fill: "#4c1d95", stroke: "#2e1065" };
     case "dance_floor":
@@ -60,6 +67,7 @@ function bodySize(object: HallObject): { width: number; height: number } {
         default:
           return assertNever(object);
       }
+    case "sofa":
     case "stage":
     case "dance_floor":
     case "restricted_area":
@@ -111,6 +119,49 @@ function ObjectBody({ object, stroke, strokeWidth }: ObjectBodyProps) {
         default:
           return assertNever(object);
       }
+    case "sofa": {
+      const { width, height, capacity } = object;
+      const backrestHeight = height * SOFA_BACKREST_RATIO;
+      const radius = Math.min(0.15, height / 4);
+      const dividers = Array.from(
+        { length: Math.max(capacity - 1, 0) },
+        (_, i) => -width / 2 + ((i + 1) * width) / capacity,
+      );
+      return (
+        <>
+          <Rect
+            x={-width / 2}
+            y={-height / 2}
+            width={width}
+            height={height}
+            cornerRadius={radius}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeScaleEnabled={false}
+          />
+          <Rect
+            x={-width / 2}
+            y={-height / 2}
+            width={width}
+            height={backrestHeight}
+            cornerRadius={radius}
+            fill={SOFA_BACKREST_FILL}
+            listening={false}
+          />
+          {dividers.map((x) => (
+            <Line
+              key={x}
+              points={[x, -height / 2 + backrestHeight, x, height / 2]}
+              stroke={SOFA_CUSHION_STROKE}
+              strokeWidth={1}
+              strokeScaleEnabled={false}
+              listening={false}
+            />
+          ))}
+        </>
+      );
+    }
     case "stage":
     case "dance_floor":
     case "restricted_area":
@@ -287,6 +338,9 @@ function labelInfo(object: HallObject, tableNumber: number | null): LabelInfo {
         color: dark,
         dy: 0,
       };
+    case "sofa":
+      // Single line: the body is only ~0.9 m tall, so two lines would spill over its edges.
+      return { lines: ["Sofa"], color: dark, dy: 0 };
     case "stage":
       return { lines: ["Stage"], color: "#ffffff", dy: 0 };
     case "dance_floor":
