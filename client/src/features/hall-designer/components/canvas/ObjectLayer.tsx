@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { Group, Layer } from "react-konva";
 import type { HallObject } from "../../types/layout";
 import { useEditorStore } from "../../store/editorStore";
+import { useValidation } from "../../hooks/useValidation";
 import HallObjectShape, { HallObjectLabel } from "./HallObjectShape";
 import SelectionTransformer from "./SelectionTransformer";
 
@@ -19,6 +20,7 @@ function ObjectLayer() {
   const objects = useEditorStore((s) => s.objects);
   const selectedId = useEditorStore((s) => s.selectedId);
   const tool = useEditorStore((s) => s.tool);
+  const { byObjectId } = useValidation();
 
   // New array; the store array is never mutated or re-sorted.
   const ordered = useMemo(
@@ -42,7 +44,7 @@ function ObjectLayer() {
   return (
     <Layer>
       {ordered.map((o) => (
-        <HallObjectShape key={o.id} object={o} selected={o.id === selectedId} tool={tool} />
+        <HallObjectShape key={o.id} object={o} selected={o.id === selectedId} tool={tool} issue={byObjectId.get(o.id)} />
       ))}
       <Group listening={false}>
         {ordered.map((o) => (

@@ -3,8 +3,10 @@ import type { CSSProperties, KeyboardEvent } from "react";
 import type { HallObject } from "../../types/layout";
 import { useEditorStore } from "../../store/editorStore";
 import type { ObjectPatch } from "../../store/editorStore";
+import { useValidation } from "../../hooks/useValidation";
 import { MAX_CAPACITY, MIN_CAPACITY, MIN_SIZE } from "../../utils/defaults";
 import NumberField from "./NumberField";
+import ValidationList from "./ValidationList";
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${JSON.stringify(value)}`);
@@ -266,9 +268,11 @@ function ObjectPanel({ object }: { object: HallObject }) {
 
 export default function PropertiesPanel() {
   const selectedObject = useEditorStore((s) => s.objects.find((o) => o.id === s.selectedId));
+  const { issues } = useValidation();
   return (
     <aside style={styles.root} aria-label="Properties">
       {selectedObject === undefined ? <HallPanel /> : <ObjectPanel key={selectedObject.id} object={selectedObject} />}
+      <ValidationList issues={issues} />
     </aside>
   );
 }

@@ -7,6 +7,7 @@ import { useEditorStore } from "../../store/editorStore";
 import type { Tool } from "../../store/editorStore";
 import { OPENING_THICKNESS } from "../../utils/defaults";
 import { snapPoint } from "../../utils/snap";
+import type { Severity } from "../../utils/validation";
 import ChairMarkers from "./ChairMarkers";
 
 function assertNever(value: never): never {
@@ -16,6 +17,9 @@ function assertNever(value: never): never {
 const SELECTED_STROKE = "#2563eb";
 const STROKE_WIDTH = 1.5;
 const SELECTED_STROKE_WIDTH = 3;
+const ERROR_STROKE = "#dc2626";
+const WARNING_STROKE = "#d97706";
+const ISSUE_STROKE_WIDTH = 2.5;
 
 interface Style {
   fill: string;
@@ -143,13 +147,53 @@ function ObjectBody({ object, stroke, strokeWidth }: ObjectBodyProps) {
   }
 }
 
+interface ValidationOutlineProps {
+  object: HallObject;
+  severity: Severity;
+}
+
+// Extra non-listening outline on the body; never affects hit areas or Transformer bounds.
+function ValidationOutline({ object, severity }: ValidationOutlineProps) {
+  const stroke = severity === "error" ? ERROR_STROKE : WARNING_STROKE;
+  const dash = severity === "warning" ? [6, 4] : [];
+  if (object.type === "table" && object.shape === "round") {
+    return (
+      <Circle
+        radius={object.radius}
+        stroke={stroke}
+        strokeWidth={ISSUE_STROKE_WIDTH}
+        strokeScaleEnabled={false}
+        dash={dash}
+        fillEnabled={false}
+        listening={false}
+      />
+    );
+  }
+  const { width, height } = bodySize(object);
+  return (
+    <Rect
+      x={-width / 2}
+      y={-height / 2}
+      width={width}
+      height={height}
+      stroke={stroke}
+      strokeWidth={ISSUE_STROKE_WIDTH}
+      strokeScaleEnabled={false}
+      dash={dash}
+      fillEnabled={false}
+      listening={false}
+    />
+  );
+}
+
 interface HallObjectShapeProps {
   object: HallObject;
   selected: boolean;
   tool: Tool;
+  issue?: Severity;
 }
 
-function HallObjectShape({ object, selected, tool }: HallObjectShapeProps) {
+function HallObjectShape({ object, selected, tool, issue }: HallObjectShapeProps) {
   const groupRef = useRef<Konva.Group>(null);
   const { width: bodyWidth, height: bodyHeight } = bodySize(object);
 
@@ -214,6 +258,7 @@ function HallObjectShape({ object, selected, tool }: HallObjectShapeProps) {
         stroke={selected ? SELECTED_STROKE : styleFor(object).stroke}
         strokeWidth={selected ? SELECTED_STROKE_WIDTH : STROKE_WIDTH}
       />
+      {issue !== undefined && <ValidationOutline object={object} severity={issue} />}
     </Group>
   );
 }

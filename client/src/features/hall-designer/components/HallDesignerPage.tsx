@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, CSSProperties } from "react";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useValidation } from "../hooks/useValidation";
 import { useEditorStore } from "../store/editorStore";
 import { loadLayoutFromStorage, parseLayout, saveLayoutToStorage, serializeLayout } from "../utils/persistence";
 import HallCanvas from "./canvas/HallCanvas";
@@ -47,6 +48,14 @@ const styles = {
     cursor: "pointer",
   } satisfies CSSProperties,
   status: { fontSize: 13, minWidth: 140, textAlign: "right" } satisfies CSSProperties,
+  badge: {
+    padding: "3px 10px",
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 999,
+    border: "1px solid transparent",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
   body: { flex: 1, minHeight: 0, display: "flex" } satisfies CSSProperties,
   canvasColumn: {
     flex: 1,
@@ -59,8 +68,21 @@ const styles = {
   hidden: { display: "none" } satisfies CSSProperties,
 };
 
+const BADGE_ERROR: CSSProperties = { background: "#fef2f2", color: "#b91c1c", borderColor: "#fecaca" };
+const BADGE_WARNING: CSSProperties = { background: "#fffbeb", color: "#b45309", borderColor: "#fde68a" };
+const BADGE_OK: CSSProperties = { background: "#f0fdf4", color: "#15803d", borderColor: "#bbf7d0" };
+
 export default function HallDesignerPage() {
   useKeyboardShortcuts();
+
+  const { issues } = useValidation();
+  const errorCount = issues.filter((i) => i.severity === "error").length;
+  const warningCount = issues.length - errorCount;
+  const badgeText =
+    errorCount === 0 && warningCount === 0
+      ? "Layout OK"
+      : `${errorCount} ${errorCount === 1 ? "error" : "errors"}, ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`;
+  const badgeColors = errorCount > 0 ? BADGE_ERROR : warningCount > 0 ? BADGE_WARNING : BADGE_OK;
 
   const [status, setStatus] = useState<Status | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,6 +161,7 @@ export default function HallDesignerPage() {
   return (
     <div style={styles.root}>
       <div style={styles.header}>
+        <span style={{ ...styles.badge, ...badgeColors }}>{badgeText}</span>
         <div style={styles.actions}>
           <span
             role="status"
