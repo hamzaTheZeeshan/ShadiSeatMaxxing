@@ -3,7 +3,7 @@ import type { ChangeEvent, CSSProperties } from "react";
 import { MAX_GUESTS, MAX_IMPORT_CHARS } from "../types/guestSchema";
 import type { GuestParseResult, ImportedGuest } from "../types/guestSchema";
 import { parseGuestCsv, CSV_TEMPLATE } from "../utils/guestCsv";
-import { GUEST_JSON_TEMPLATE, parseGuestJson } from "../utils/guestJson";
+import { GUEST_JSON_TEMPLATE, SAMPLE_200_GUESTS_JSON, parseGuestJson } from "../utils/guestJson";
 
 type ImportMode = "append" | "replace";
 
@@ -60,6 +60,16 @@ const styles = {
     borderRadius: 6,
     background: "#ffffff",
     color: "#111827",
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  highlightButton: {
+    padding: "6px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+    border: "1px solid #2563eb",
+    borderRadius: 6,
+    background: "#eff6ff",
+    color: "#1d4ed8",
     cursor: "pointer",
   } satisfies CSSProperties,
   errorList: {
@@ -227,6 +237,15 @@ export default function GuestImport({ onImport, hasGuests }: GuestImportProps) {
           onClick={() => downloadTextFile(CSV_TEMPLATE, "shadi-maxing-guests-template.csv", "text/csv")}
         >
           Download CSV template
+        </button>
+        <button
+          type="button"
+          style={styles.highlightButton}
+          onClick={() =>
+            downloadTextFile(SAMPLE_200_GUESTS_JSON, "shadi-maxing-sample-200-guests.json", "application/json")
+          }
+        >
+          Download 200-Guest Sample (for AI Prompting)
         </button>
       </div>
 

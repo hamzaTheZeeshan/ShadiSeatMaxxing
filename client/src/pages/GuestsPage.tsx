@@ -33,6 +33,20 @@ const styles = {
   inner: { maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 } satisfies CSSProperties,
   heading: { margin: 0, fontSize: 28, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
   intro: { margin: 0, fontSize: 15, color: "#4b5563" } satisfies CSSProperties,
+  importRow: { display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 16 } satisfies CSSProperties,
+  importMain: { flex: "2 1 520px", minWidth: 0 } satisfies CSSProperties,
+  tip: {
+    flex: "1 1 260px",
+    minWidth: 0,
+    boxSizing: "border-box",
+    padding: 16,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: "#1e3a8a",
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    borderRadius: 10,
+  } satisfies CSSProperties,
   toolbar: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 } satisfies CSSProperties,
   button: {
     padding: "8px 14px",
@@ -206,7 +220,16 @@ export default function GuestsPage() {
 
         <GuestSummary stats={stats} />
         <GuestForm onAdd={handleAdd} />
-        <GuestImport onImport={handleImport} hasGuests={guests.length > 0} />
+
+        <div style={styles.importRow}>
+          <div style={styles.importMain}>
+            <GuestImport onImport={handleImport} hasGuests={guests.length > 0} />
+          </div>
+          <aside style={styles.tip} aria-label="Import tip">
+            💡 <strong>Tip:</strong> Take a photo of your handwritten guest notes, download our sample JSON format,
+            and give both to an AI (ChatGPT/Claude) to instantly format your entire list!
+          </aside>
+        </div>
 
         <div style={styles.toolbar}>
           <button type="button" style={styles.button} onClick={handleExportJson}>
