@@ -4,7 +4,10 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useValidation } from "../hooks/useValidation";
 import { useEditorStore } from "../store/editorStore";
 import { loadLayoutFromStorage, parseLayout, saveLayoutToStorage, serializeLayout } from "../utils/persistence";
+import { fitViewport } from "../utils/fitViewport";
+import type { HallPreset } from "../utils/presetLayouts";
 import HallCanvas from "./canvas/HallCanvas";
+import PresetModal from "./presets/PresetModal";
 import PropertiesPanel from "./properties/PropertiesPanel";
 import Toolbar from "./tools/Toolbar";
 
@@ -87,6 +90,9 @@ export default function HallDesignerPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasColumnRef = useRef<HTMLDivElement>(null);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const hasObjects = useEditorStore((s) => s.objects.length > 0);
 
   useEffect(
     () => () => {
@@ -158,6 +164,17 @@ export default function HallDesignerPage() {
     }
   };
 
+  const handleApplyPreset = (preset: HallPreset) => {
+    const store = useEditorStore.getState();
+    store.loadLayout(structuredClone(preset.layout)); // clears history + selection
+    const el = canvasColumnRef.current;
+    if (el && el.clientWidth > 0 && el.clientHeight > 0) {
+      store.setViewport(fitViewport(preset.layout.hall, el.clientWidth, el.clientHeight));
+    }
+    setPresetsOpen(false);
+    showStatus("success", `Preset "${preset.name}" loaded.`);
+  };
+
   return (
     <div style={styles.root}>
       <div style={styles.header}>
@@ -169,6 +186,9 @@ export default function HallDesignerPage() {
           >
             {status?.text ?? ""}
           </span>
+          <button type="button" style={styles.button} onClick={() => setPresetsOpen(true)}>
+            Presets
+          </button>
           <button type="button" style={styles.button} onClick={handleSave}>
             Save
           </button>
@@ -196,11 +216,18 @@ export default function HallDesignerPage() {
       </div>
       <div style={styles.body}>
         <Toolbar />
-        <div style={styles.canvasColumn}>
+        <div ref={canvasColumnRef} style={styles.canvasColumn}>
           <HallCanvas />
         </div>
         <PropertiesPanel />
       </div>
+
+      <PresetModal
+        open={presetsOpen}
+        hasObjects={hasObjects}
+        onClose={() => setPresetsOpen(false)}
+        onApply={handleApplyPreset}
+      />
     </div>
   );
 }
