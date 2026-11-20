@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import AppShell from "./app/AppShell";
 import HallDesignerPage from "./features/hall-designer/components/HallDesignerPage";
 import CurtainSplash from "./features/splash/CurtainSplash";
+import ConstraintsPage from "./pages/ConstraintsPage";
 import EventPage from "./pages/EventPage";
 import GuestsPage from "./pages/GuestsPage";
 import HomePage from "./pages/HomePage";
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/event" element={<EventPage />} />
           <Route path="/guests" element={<GuestsPage />} />
           <Route path="/designer" element={<HallDesignerPage />} />
+          <Route path="/constraints" element={<ConstraintsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
