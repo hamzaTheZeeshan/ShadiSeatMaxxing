@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useConstraintStore } from "../features/constraints/store/constraintStore";
-import { useEventStore } from "../features/event/store/eventStore";
 import { useGuestStore } from "../features/guests/store/guestStore";
 
 interface Step {
@@ -65,12 +64,10 @@ const styles = {
 };
 
 export default function HomePage() {
-  const eventName = useEventStore((s) => s.event.event_name);
   const guestCount = useGuestStore((s) => s.guests.length);
   const ruleCount = useConstraintStore((s) => s.rules.length);
 
   const steps: Step[] = [
-    { label: "Event", to: "/event", note: "Set up event", subtitle: eventName },
     { label: "Hall", to: "/designer", note: "Open designer" },
     {
       label: "Guests",
