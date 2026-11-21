@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useConstraintStore } from "../features/constraints/store/constraintStore";
 import { useGuestStore } from "../features/guests/store/guestStore";
 import { useEditorStore } from "../features/hall-designer/store/editorStore";
+import ResultsView from "../features/results/components/ResultsView";
 import { useSeatingStore } from "../features/seating/store/seatingStore";
 
 const ACCENT = "#ff2e5b";
@@ -24,7 +25,8 @@ const styles = {
     fontFamily: "'Poppins', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
     color: INK,
   } satisfies CSSProperties,
-  inner: { maxWidth: 900, margin: "0 auto" } satisfies CSSProperties,
+  // Wider than before so the hall canvas and roster tables have room.
+  inner: { maxWidth: 1200, margin: "0 auto" } satisfies CSSProperties,
   h1: { margin: "0 0 8px", fontSize: 34, fontWeight: 700 } satisfies CSSProperties,
   sub: { margin: "0 0 24px", fontSize: 15, color: MUTED } satisfies CSSProperties,
   card: {
@@ -79,17 +81,6 @@ const styles = {
     marginBottom: 20,
   } satisfies CSSProperties,
   errorList: { margin: "8px 0 0", paddingLeft: 20 } satisfies CSSProperties,
-  pre: {
-    margin: 0,
-    padding: 16,
-    borderRadius: 12,
-    background: "#111827",
-    color: "#e5e7eb",
-    fontSize: 12,
-    lineHeight: 1.5,
-    overflow: "auto",
-    maxHeight: 480,
-  } satisfies CSSProperties,
 };
 
 export default function ResultsPage() {
@@ -189,13 +180,7 @@ export default function ResultsPage() {
           </div>
         ) : null}
 
-        {status === "success" && result ? (
-          <section style={styles.card}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 20 }}>Solver output</h2>
-            {/* TODO: replace with a real seating view once the response shape is typed. */}
-            <pre style={styles.pre}>{JSON.stringify(result, null, 2)}</pre>
-          </section>
-        ) : null}
+        {status === "success" && result ? <ResultsView result={result} /> : null}
       </div>
     </div>
   );
