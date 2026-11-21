@@ -16,19 +16,118 @@ import type { RuleKind, RuleStrength } from "../types/constraintSchema";
 
 const MAX_MATCHES = 20;
 
+/* ---------- theme (same as constraints page) ---------- */
+const INK = "#111111";
+const CREAM = "#fff4dc";
+const MINT = "#a8d5b5";
+const PINK = "#f6b8f6";
+const WHITE = "#ffffff";
+const MUTED = "#4b4b4b";
+const DANGER = "#b91c1c";
+
+const control = {
+  padding: "6px 8px",
+  fontFamily: "inherit",
+  fontSize: 12,
+  border: `2px solid ${INK}`,
+  borderRadius: 0,
+  background: WHITE,
+  color: INK,
+  boxSizing: "border-box",
+} satisfies CSSProperties;
+
+const buttonBase = {
+  padding: "8px 14px",
+  fontFamily: "inherit",
+  fontSize: 12,
+  fontWeight: 700,
+  border: `2px solid ${INK}`,
+  borderRadius: 0,
+  color: INK,
+} satisfies CSSProperties;
+
 const styles = {
-  section: { margin: "0 0 24px", padding: 16, border: "1px solid #d1d5db", borderRadius: 10, background: "#ffffff" } satisfies CSSProperties,
-  heading: { margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
-  row: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 12, fontSize: 14 } satisfies CSSProperties,
-  field: { display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "#374151" } satisfies CSSProperties,
-  note: { width: "100%", maxWidth: 480, padding: "4px 8px", fontSize: 14, boxSizing: "border-box" } satisfies CSSProperties,
-  chips: { display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0" } satisfies CSSProperties,
-  chip: { display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, background: "#e5e7eb", fontSize: 13 } satisfies CSSProperties,
-  chipButton: { border: "none", background: "transparent", cursor: "pointer", fontSize: 14, lineHeight: 1 } satisfies CSSProperties,
-  matches: { listStyle: "none", margin: "4px 0 8px", padding: 0, maxHeight: 200, overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: 6 } satisfies CSSProperties,
-  matchButton: { display: "block", width: "100%", textAlign: "left", padding: "6px 10px", border: "none", background: "transparent", cursor: "pointer", fontSize: 14 } satisfies CSSProperties,
-  muted: { fontSize: 13, color: "#6b7280" } satisfies CSSProperties,
-  errors: { margin: "0 0 12px", paddingLeft: 18, fontSize: 13, color: "#b91c1c" } satisfies CSSProperties,
+  section: {
+    margin: "0 0 24px",
+    padding: 16,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    boxShadow: `4px 4px 0 ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  heading: {
+    margin: "0 0 14px",
+    padding: "0 0 8px",
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: `2px solid ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  row: { display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12, marginBottom: 14, fontSize: 12 } satisfies CSSProperties,
+  field: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, fontWeight: 700, color: INK } satisfies CSSProperties,
+  control,
+  note: { ...control, width: "100%", maxWidth: 480, background: CREAM } satisfies CSSProperties,
+  weight: { ...control, width: 80, background: CREAM } satisfies CSSProperties,
+  chips: { display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 14px" } satisfies CSSProperties,
+  chip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "3px 8px",
+    background: PINK,
+    border: `2px solid ${INK}`,
+    fontSize: 12,
+    fontWeight: 600,
+  } satisfies CSSProperties,
+  chipButton: {
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: 14,
+    fontWeight: 700,
+    lineHeight: 1,
+    padding: 0,
+    color: INK,
+  } satisfies CSSProperties,
+  matches: {
+    listStyle: "none",
+    margin: "8px 0 14px",
+    padding: 0,
+    maxHeight: 200,
+    overflowY: "auto",
+    border: `2px solid ${INK}`,
+    background: CREAM,
+  } satisfies CSSProperties,
+  matchButton: {
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    padding: "7px 10px",
+    border: "none",
+    borderBottom: `1px solid ${INK}`,
+    background: "transparent",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: 12,
+    color: INK,
+  } satisfies CSSProperties,
+  muted: { fontSize: 12, color: MUTED } satisfies CSSProperties,
+  errors: {
+    margin: "0 0 14px",
+    padding: "8px 10px 8px 26px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: DANGER,
+    background: "#ffe3e3",
+    border: `2px solid ${INK}`,
+  } satisfies CSSProperties,
+  addButton: { ...buttonBase, background: INK, color: WHITE, cursor: "pointer" } satisfies CSSProperties,
+  secondaryButton: { ...buttonBase, background: MINT, cursor: "pointer" } satisfies CSSProperties,
+  secondaryDisabled: { ...buttonBase, background: WHITE, opacity: 0.5, cursor: "not-allowed" } satisfies CSSProperties,
 };
 
 export default function RuleForm() {
@@ -105,6 +204,8 @@ export default function RuleForm() {
     setNote("");
   }
 
+  const weightDisabled = strength !== "prefer";
+
   return (
     <section style={styles.section} aria-labelledby="rule-form-heading">
       <h2 id="rule-form-heading" style={styles.heading}>
@@ -115,6 +216,8 @@ export default function RuleForm() {
           <label style={styles.field}>
             Kind
             <select
+              className="cp-focus"
+              style={styles.control}
               value={kind}
               onChange={(e) => {
                 const next = parseOption(RULE_KINDS, e.target.value);
@@ -131,6 +234,8 @@ export default function RuleForm() {
           <label style={styles.field}>
             Strength
             <select
+              className="cp-focus"
+              style={styles.control}
               value={strength}
               onChange={(e) => {
                 const next = parseOption(RULE_STRENGTHS, e.target.value);
@@ -148,21 +253,23 @@ export default function RuleForm() {
             Weight (1-10)
             <input
               type="number"
+              className="cp-focus"
               min={1}
               max={10}
               step={1}
               value={weightText}
-              disabled={strength !== "prefer"}
+              disabled={weightDisabled}
               onChange={(e) => setWeightText(e.target.value)}
-              style={{ width: 80 }}
+              style={{ ...styles.weight, ...(weightDisabled ? { opacity: 0.5, cursor: "not-allowed" } : null) }}
             />
           </label>
         </div>
 
-        <label style={{ ...styles.field, marginBottom: 12 }}>
+        <label style={{ ...styles.field, marginBottom: 14 }}>
           Note (optional)
           <input
             type="text"
+            className="cp-focus"
             value={note}
             maxLength={NOTE_MAX_LENGTH + 50}
             onChange={(e) => setNote(e.target.value)}
@@ -175,6 +282,7 @@ export default function RuleForm() {
             Find guests by name or household
             <input
               type="search"
+              className="cp-focus"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={styles.note}
@@ -190,6 +298,7 @@ export default function RuleForm() {
                 <li key={g.id}>
                   <button
                     type="button"
+                    className="cp-navlink cp-focus"
                     style={styles.matchButton}
                     onClick={() => setIds((prev) => (prev.includes(g.id) ? prev : [...prev, g.id]))}
                   >
@@ -205,7 +314,12 @@ export default function RuleForm() {
         <div style={styles.row}>
           <label style={styles.field}>
             Household
-            <select value={household} onChange={(e) => setHousehold(e.target.value)}>
+            <select
+              className="cp-focus"
+              style={styles.control}
+              value={household}
+              onChange={(e) => setHousehold(e.target.value)}
+            >
               <option value="">Choose household…</option>
               {households.map((h) => (
                 <option key={h} value={h}>
@@ -214,7 +328,13 @@ export default function RuleForm() {
               ))}
             </select>
           </label>
-          <button type="button" onClick={addHousehold} disabled={household === ""}>
+          <button
+            type="button"
+            className={household === "" ? "cp-focus" : "cp-hover cp-focus"}
+            style={household === "" ? styles.secondaryDisabled : styles.secondaryButton}
+            onClick={addHousehold}
+            disabled={household === ""}
+          >
             Add whole household
           </button>
         </div>
@@ -226,6 +346,7 @@ export default function RuleForm() {
               {nameById.get(id) ?? id}
               <button
                 type="button"
+                className="cp-focus"
                 aria-label={`Remove ${nameById.get(id) ?? id}`}
                 style={styles.chipButton}
                 onClick={() => setIds((prev) => prev.filter((x) => x !== id))}
@@ -244,7 +365,9 @@ export default function RuleForm() {
           </ul>
         ) : null}
 
-        <button type="submit">Add rule</button>
+        <button type="submit" className="cp-hover cp-focus" style={styles.addButton}>
+          Add rule
+        </button>
       </form>
     </section>
   );

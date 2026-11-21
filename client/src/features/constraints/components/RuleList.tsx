@@ -10,18 +10,74 @@ const PAGE_SIZE = 50;
 
 type KindFilter = "all" | RuleKind;
 
+/* ---------- theme (same as constraints page) ---------- */
+const INK = "#111111";
+const CREAM = "#fff4dc";
+const WHITE = "#ffffff";
+const MUTED = "#4b4b4b";
+const DANGER = "#b91c1c";
+
+const buttonBase = {
+  padding: "6px 12px",
+  fontFamily: "inherit",
+  fontSize: 12,
+  fontWeight: 700,
+  border: `2px solid ${INK}`,
+  borderRadius: 0,
+  color: INK,
+} satisfies CSSProperties;
+
 const styles = {
-  section: { margin: "0 0 24px", padding: 16, border: "1px solid #d1d5db", borderRadius: 10, background: "#ffffff" } satisfies CSSProperties,
-  heading: { margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
-  toolbar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12, fontSize: 14 } satisfies CSSProperties,
-  list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
-  item: { display: "flex", justifyContent: "space-between", gap: 12, padding: 10, border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 14 } satisfies CSSProperties,
-  meta: { fontWeight: 600, color: "#111827" } satisfies CSSProperties,
-  guests: { margin: "2px 0", color: "#374151" } satisfies CSSProperties,
-  unknown: { color: "#b91c1c" } satisfies CSSProperties,
-  note: { margin: 0, fontSize: 13, color: "#6b7280" } satisfies CSSProperties,
-  empty: { margin: 0, fontSize: 14, color: "#4b5563" } satisfies CSSProperties,
-  pager: { display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 14 } satisfies CSSProperties,
+  section: {
+    margin: "0 0 24px",
+    padding: 16,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    boxShadow: `4px 4px 0 ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  heading: {
+    margin: "0 0 14px",
+    padding: "0 0 8px",
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: `2px solid ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  toolbar: { display: "flex", alignItems: "center", gap: 10, marginBottom: 14, fontSize: 12, fontWeight: 700 } satisfies CSSProperties,
+  select: {
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    color: INK,
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  item: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 10,
+    background: CREAM,
+    border: `2px solid ${INK}`,
+    fontSize: 12,
+  } satisfies CSSProperties,
+  meta: { fontWeight: 700, color: INK } satisfies CSSProperties,
+  guests: { margin: "4px 0", color: INK, lineHeight: 1.5 } satisfies CSSProperties,
+  unknown: { color: DANGER, fontWeight: 600 } satisfies CSSProperties,
+  note: { margin: 0, fontSize: 12, fontStyle: "italic", color: MUTED } satisfies CSSProperties,
+  empty: { margin: 0, fontSize: 12, color: MUTED } satisfies CSSProperties,
+  pager: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 14, fontSize: 12, fontWeight: 600 } satisfies CSSProperties,
+  removeButton: { ...buttonBase, background: "#ff9a9a", cursor: "pointer" } satisfies CSSProperties,
+  pagerButton: { ...buttonBase, background: WHITE, cursor: "pointer" } satisfies CSSProperties,
+  pagerDisabled: { ...buttonBase, background: WHITE, opacity: 0.5, cursor: "not-allowed" } satisfies CSSProperties,
 };
 
 export default function RuleList() {
@@ -47,6 +103,9 @@ export default function RuleList() {
   const currentPage = Math.min(page, pageCount - 1);
   const visible = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
 
+  const prevDisabled = currentPage === 0;
+  const nextDisabled = currentPage >= pageCount - 1;
+
   return (
     <section style={styles.section} aria-labelledby="rule-list-heading">
       <h2 id="rule-list-heading" style={styles.heading}>
@@ -56,6 +115,8 @@ export default function RuleList() {
         <label htmlFor="rule-filter">Show</label>
         <select
           id="rule-filter"
+          className="cp-focus"
+          style={styles.select}
           value={filter}
           onChange={(e) => {
             const next = e.target.value === "all" ? "all" : parseOption(RULE_KINDS, e.target.value);
@@ -99,7 +160,12 @@ export default function RuleList() {
                 {rule.note !== "" ? <p style={styles.note}>{rule.note}</p> : null}
               </div>
               <div>
-                <button type="button" onClick={() => removeRule(rule.id)}>
+                <button
+                  type="button"
+                  className="cp-hover cp-focus"
+                  style={styles.removeButton}
+                  onClick={() => removeRule(rule.id)}
+                >
                   Remove
                 </button>
               </div>
@@ -110,13 +176,25 @@ export default function RuleList() {
 
       {pageCount > 1 ? (
         <div style={styles.pager}>
-          <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
+          <button
+            type="button"
+            className={prevDisabled ? "cp-focus" : "cp-hover cp-focus"}
+            style={prevDisabled ? styles.pagerDisabled : styles.pagerButton}
+            disabled={prevDisabled}
+            onClick={() => setPage(currentPage - 1)}
+          >
             Previous
           </button>
           <span>
             Page {currentPage + 1} of {pageCount}
           </span>
-          <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>
+          <button
+            type="button"
+            className={nextDisabled ? "cp-focus" : "cp-hover cp-focus"}
+            style={nextDisabled ? styles.pagerDisabled : styles.pagerButton}
+            disabled={nextDisabled}
+            onClick={() => setPage(currentPage + 1)}
+          >
             Next
           </button>
         </div>

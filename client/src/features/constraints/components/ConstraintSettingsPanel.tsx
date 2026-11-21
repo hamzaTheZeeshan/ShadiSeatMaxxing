@@ -3,6 +3,14 @@ import type { CSSProperties } from "react";
 import { useConstraintStore } from "../store/constraintStore";
 import type { Settings } from "../types/constraintSchema";
 
+/* ---------- theme (same as constraints page) ---------- */
+const INK = "#111111";
+const CREAM = "#fff4dc";
+const MINT = "#a8d5b5";
+const WHITE = "#ffffff";
+const MUTED = "#4b4b4b";
+const DANGER = "#b91c1c";
+
 interface ToggleRow {
   id: string;
   label: string;
@@ -121,14 +129,52 @@ const WEIGHTS: WeightRow[] = [
 ];
 
 const styles = {
-  section: { margin: "0 0 24px", padding: 16, border: "1px solid #d1d5db", borderRadius: 10, background: "#ffffff" } satisfies CSSProperties,
-  heading: { margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
-  subheading: { margin: "16px 0 8px", fontSize: 14, fontWeight: 600, color: "#374151" } satisfies CSSProperties,
-  row: { display: "flex", flexDirection: "column", gap: 2, marginBottom: 12 } satisfies CSSProperties,
-  label: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "#111827" } satisfies CSSProperties,
-  help: { margin: 0, fontSize: 13, color: "#4b5563" } satisfies CSSProperties,
-  input: { width: 100, padding: "4px 8px", fontSize: 14 } satisfies CSSProperties,
-  error: { margin: 0, fontSize: 13, color: "#b91c1c" } satisfies CSSProperties,
+  section: {
+    margin: "0 0 24px",
+    padding: 16,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    boxShadow: `4px 4px 0 ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  heading: {
+    margin: "0 0 14px",
+    padding: "0 0 8px",
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: `2px solid ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  subheading: {
+    display: "inline-block",
+    margin: "18px 0 10px",
+    padding: "3px 8px",
+    fontSize: 12,
+    fontWeight: 700,
+    background: MINT,
+    border: `2px solid ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  row: { display: "flex", flexDirection: "column", gap: 3, marginBottom: 14 } satisfies CSSProperties,
+  label: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: INK, cursor: "pointer" } satisfies CSSProperties,
+  help: { margin: 0, fontSize: 12, lineHeight: 1.5, color: MUTED } satisfies CSSProperties,
+  checkbox: { width: 16, height: 16, margin: 0, accentColor: INK, cursor: "pointer", flexShrink: 0 } satisfies CSSProperties,
+  range: { width: "100%", maxWidth: 320, accentColor: INK, cursor: "pointer" } satisfies CSSProperties,
+  input: {
+    width: 100,
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: CREAM,
+    color: INK,
+    boxSizing: "border-box",
+  } satisfies CSSProperties,
+  error: { margin: 0, fontSize: 12, fontWeight: 600, color: DANGER } satisfies CSSProperties,
 };
 
 interface NumberFieldProps {
@@ -164,6 +210,7 @@ function NumberField({ id, label, help, value, min, max, onValid }: NumberFieldP
       <input
         id={id}
         type="number"
+        className="cp-focus"
         min={min}
         max={max}
         step={0.5}
@@ -174,7 +221,7 @@ function NumberField({ id, label, help, value, min, max, onValid }: NumberFieldP
           setError(null);
         }}
         aria-invalid={error !== null}
-        style={styles.input}
+        style={{ ...styles.input, ...(error !== null ? { background: "#ff9a9a" } : null) }}
       />
       <p style={styles.help}>{help}</p>
       {error ? (
@@ -201,6 +248,8 @@ export default function ConstraintSettingsPanel() {
             <input
               id={`setting-${row.id}`}
               type="checkbox"
+              className="cp-focus"
+              style={styles.checkbox}
               checked={row.read(settings)}
               onChange={(e) => setSettings(row.patch(e.target.checked))}
             />
@@ -233,6 +282,8 @@ export default function ConstraintSettingsPanel() {
           <input
             id={`setting-${row.id}`}
             type="range"
+            className="cp-focus"
+            style={styles.range}
             min={0}
             max={10}
             step={1}

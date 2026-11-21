@@ -26,12 +26,75 @@ interface Status {
   lines: string[];
 }
 
+/* ---------- theme (same as constraints page) ---------- */
+const INK = "#111111";
+const CREAM = "#fff4dc";
+const MINT = "#a8d5b5";
+const WHITE = "#ffffff";
+
+const buttonBase = {
+  padding: "8px 14px",
+  fontFamily: "inherit",
+  fontSize: 12,
+  fontWeight: 700,
+  border: `2px solid ${INK}`,
+  borderRadius: 0,
+  color: INK,
+} satisfies CSSProperties;
+
 const styles = {
-  section: { margin: "0 0 24px", padding: 16, border: "1px solid #d1d5db", borderRadius: 10, background: "#ffffff" } satisfies CSSProperties,
-  heading: { margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
-  row: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 12, fontSize: 14 } satisfies CSSProperties,
-  textarea: { width: "100%", maxWidth: 640, minHeight: 120, padding: 8, fontFamily: "monospace", fontSize: 13, boxSizing: "border-box" } satisfies CSSProperties,
-  status: { margin: "12px 0 0", fontSize: 14 } satisfies CSSProperties,
+  section: {
+    margin: "0 0 24px",
+    padding: 16,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    boxShadow: `4px 4px 0 ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  heading: {
+    margin: "0 0 14px",
+    padding: "0 0 8px",
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    borderBottom: `2px solid ${INK}`,
+    color: INK,
+  } satisfies CSSProperties,
+  row: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 14, fontSize: 12, fontWeight: 700 } satisfies CSSProperties,
+  select: {
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: WHITE,
+    color: INK,
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  fileInput: { fontFamily: "inherit", fontSize: 12, color: INK, cursor: "pointer" } satisfies CSSProperties,
+  pasteLabel: { display: "block", marginBottom: 6, fontSize: 12, fontWeight: 700 } satisfies CSSProperties,
+  textarea: {
+    width: "100%",
+    maxWidth: 640,
+    minHeight: 120,
+    padding: 8,
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: CREAM,
+    color: INK,
+    boxSizing: "border-box",
+    resize: "vertical",
+  } satisfies CSSProperties,
+  textareaWrap: { marginBottom: 14 } satisfies CSSProperties,
+  primary: { ...buttonBase, background: INK, color: WHITE, cursor: "pointer" } satisfies CSSProperties,
+  primaryDisabled: { ...buttonBase, background: INK, color: WHITE, opacity: 0.4, cursor: "not-allowed" } satisfies CSSProperties,
+  secondary: { ...buttonBase, background: MINT, cursor: "pointer" } satisfies CSSProperties,
+  plain: { ...buttonBase, background: WHITE, cursor: "pointer" } satisfies CSSProperties,
+  status: { margin: "12px 0 0", fontSize: 12, fontWeight: 600, minHeight: 18 } satisfies CSSProperties,
 };
 
 function downloadText(filename: string, text: string): void {
@@ -122,6 +185,8 @@ export default function ConstraintImport() {
     downloadText("constraints.json", serializeConstraints({ version: 1, settings, zones, rules }));
   }
 
+  const importDisabled = text.trim() === "";
+
   return (
     <section style={styles.section} aria-labelledby="constraint-import-heading">
       <h2 id="constraint-import-heading" style={styles.heading}>
@@ -131,6 +196,8 @@ export default function ConstraintImport() {
         <label>
           Mode{" "}
           <select
+            className="cp-focus"
+            style={styles.select}
             value={mode}
             onChange={(e) => {
               const next = parseOption(MODES, e.target.value);
@@ -145,26 +212,48 @@ export default function ConstraintImport() {
           </select>
         </label>
         <label>
-          JSON file <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleFile} />
+          JSON file{" "}
+          <input
+            ref={fileRef}
+            type="file"
+            className="cp-focus"
+            style={styles.fileInput}
+            accept="application/json,.json"
+            onChange={handleFile}
+          />
         </label>
       </div>
-      <label htmlFor="constraint-paste">Or paste JSON</label>
-      <div>
+      <label htmlFor="constraint-paste" style={styles.pasteLabel}>
+        Or paste JSON
+      </label>
+      <div style={styles.textareaWrap}>
         <textarea
           id="constraint-paste"
+          className="cp-focus"
           value={text}
           onChange={(e) => setText(e.target.value)}
           style={styles.textarea}
         />
       </div>
       <div style={styles.row}>
-        <button type="button" onClick={() => runImport(text)} disabled={text.trim() === ""}>
+        <button
+          type="button"
+          className={importDisabled ? "cp-focus" : "cp-hover cp-focus"}
+          style={importDisabled ? styles.primaryDisabled : styles.primary}
+          onClick={() => runImport(text)}
+          disabled={importDisabled}
+        >
           Import pasted JSON
         </button>
-        <button type="button" onClick={() => downloadText("constraints-template.json", CONSTRAINT_JSON_TEMPLATE)}>
+        <button
+          type="button"
+          className="cp-hover cp-focus"
+          style={styles.plain}
+          onClick={() => downloadText("constraints-template.json", CONSTRAINT_JSON_TEMPLATE)}
+        >
           Download template
         </button>
-        <button type="button" onClick={exportCurrent}>
+        <button type="button" className="cp-hover cp-focus" style={styles.secondary} onClick={exportCurrent}>
           Export current JSON
         </button>
       </div>
