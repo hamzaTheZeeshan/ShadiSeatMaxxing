@@ -1,14 +1,28 @@
-"""CP-SAT model for the guest seating problem.
+"""CP-SAT model for the guest seating problem (every guest is always seated).
 
 Model
 -----
-Guests that are forced to share a table (same household, or in a must-together rule) are merged into
-*groups* with union-find. One Boolean ``y[group, seat]`` says which seat object (table or sofa) the whole
-group sits at; every guest's ``x[g, t]`` is the ``y`` of their group. This enforces households/must-together
-without extra equality constraints and keeps the model small.
+``x[g][s]`` is a Boolean: guest ``g`` sits at seat object ``s`` (a table or a sofa).
 
-Objective = ASSIGN_BONUS * seated guests + soft score. ASSIGN_BONUS dominates, so guests are seated whenever
-the hard constraints allow it. The reported ``score`` is the soft score only (bonus removed).
+Always hard (physical):
+  * every guest sits at exactly one seat object (when total capacity >= guest count)
+  * a seat object never holds more guests than its capacity
+
+Relaxable "hard" rules (Tier 2). They are NOT forbidden. Breaking one costs a large penalty, so the solver
+breaks them only when that is the price of seating everyone, and it breaks the lowest-priority ones first:
+
+    must apart            (highest priority)
+    gender zones
+    must together
+    households together
+    sofas for seniors only (lowest priority)
+
+Preferences (Tier 1): proximity rewards, side balance, similar ages and prefer together/apart. Their total
+stays far below one Tier-2 penalty, so a preference never wins against a hard rule.
+
+The reported ``score`` is the Tier-1 (soft) score only. Tier-2 penalties are reported through
+``broken_constraints`` instead, so the score stays readable. Violations are found by inspecting the final
+assignment, not the penalty variables, so the list is always accurate.
 """
 from __future__ import annotations
 
@@ -22,14 +36,23 @@ from ortools.sat.python import cp_model
 
 from .geometry import min_distance, object_geometry
 
-ASSIGN_BONUS = 100_000   # per seated guest
+# ---- Tier 1: soft scoring units ---------------------------------------------------------------------
 SCALE = 100              # proximity: weight * SCALE * closeness(0..1) per guest
 VIP_WEIGHT = 10
 CHIEF_GUEST_WEIGHT = 15
 ACCESS_WEIGHT = 10
 BALANCE_UNIT = 50        # penalty per unit of |bride - groom| at a seat object, times weight
 AGE_UNIT = 40            # penalty per distinct age band at a seat object, times weight
-PREF_UNIT = 60           # per co-seated member (together) / per co-seated pair (apart), times rule weight
+PREF_UNIT = 60           # per co-seated member (together) / co-seated pair (apart), times rule weight
+
+# ---- Tier 2: penalty per violation unit, ordered by priority (higher = broken last) ------------------
+# Keep BASE far above the largest realistic soft total so a preference can never beat a hard rule.
+BASE = 100_000_000
+PEN_SOFA = 1 * BASE        # per non-senior guest on a sofa
+PEN_HOUSEHOLD = 2 * BASE   # per household member separated from the household's main table
+PEN_TOGETHER = 4 * BASE    # per must-together member separated from the rule's main table
+PEN_ZONE = 8 * BASE        # per guest in a gender zone that excludes them
+PEN_APART = 16 * BASE      # per must-apart pair sharing a seat object
 
 
 @dataclass
@@ -72,7 +95,12 @@ def solve_seating(
     rules = constraints.get("rules") or []
     messages: list[str] = []
 
-    def respond(status: str, placed: dict[str, tuple[str, int]] | None = None, score: int = 0) -> dict[str, Any]:
+    def respond(
+        status: str,
+        placed: dict[str, tuple[str, int]] | None = None,
+        score: int = 0,
+        broken: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         placed = placed or {}
         return {
             "status": status,
@@ -81,6 +109,7 @@ def solve_seating(
                 for g in guests if g["id"] in placed
             ],
             "unassigned_guests": [g["id"] for g in guests if g["id"] not in placed],
+            "broken_constraints": broken or [],
             "score": score,
             "execution_time_ms": int((time.perf_counter() - t0) * 1000),
             "messages": messages,
@@ -105,275 +134,337 @@ def solve_seating(
     n = len(guests)
     if n == 0:
         return respond("OPTIMAL")
+    total_capacity = sum(s.capacity for s in seats)
     if not seats:
         messages.append("The hall has no seats (tables or sofas with capacity).")
+        return respond("INFEASIBLE")
+    if total_capacity < n:
+        # The only infeasible case: not enough physical seats.
+        messages.append(f"The hall has {total_capacity} seats for {n} guests.")
         return respond("INFEASIBLE")
 
     index = {g["id"]: i for i, g in enumerate(guests)}
     S = range(len(seats))
-
-    # ---- groups of guests that must share a seat object ----------------------------------------------
-    parent = list(range(n))
-
-    def find(a: int) -> int:
-        while parent[a] != a:
-            parent[a] = parent[parent[a]]
-            a = parent[a]
-        return a
-
-    def union(a: int, b: int) -> None:
-        ra, rb = find(a), find(b)
-        if ra != rb:
-            parent[max(ra, rb)] = min(ra, rb)
-
-    if settings["households_together"]:
-        by_household: dict[str, list[int]] = defaultdict(list)
-        for i, g in enumerate(guests):
-            h = g["household"].strip()
-            if h:
-                by_household[h].append(i)
-        for members in by_household.values():
-            for m in members[1:]:
-                union(members[0], m)
+    G = range(n)
 
     def known(ids: list[str]) -> list[int]:
-        return [index[i] for i in ids if i in index]
+        return sorted({index[i] for i in ids if i in index})
 
     for r in rules:
         unknown = [i for i in r["guest_ids"] if i not in index]
         if unknown:
             messages.append(f"Rule {r['id']} references unknown guests {unknown}; they were ignored.")
-        if r["kind"] == "together" and r["strength"] == "must":
-            ms = known(r["guest_ids"])
-            for m in ms[1:]:
-                union(ms[0], m)
 
-    group_of = [find(i) for i in range(n)]
-    roots = sorted(set(group_of))
-    gid = {root: k for k, root in enumerate(roots)}
-    K = range(len(roots))
-    members: list[list[int]] = [[] for _ in roots]
-    for i in range(n):
-        members[gid[group_of[i]]].append(i)
-    grp = [gid[group_of[i]] for i in range(n)]  # guest index -> group index
-
-    # ---- hard-constraint filtering: where may each group sit? ------------------------------------------
-    def guest_ok(g: dict[str, Any], seat: Seat) -> bool:
-        if seat.kind == "sofa" and settings["sofas_for_seniors_only"] and g["age_band"] != "senior":
-            return False
-        if settings["enforce_gender_zones"]:
-            zone = zones.get(seat.id, "mixed")
-            if zone == "men" and g["gender"] == "female":
-                return False
-            if zone == "women" and g["gender"] == "male":
-                return False
-        return True
-
-    allowed: list[list[int]] = [
-        [s for s in S if all(guest_ok(guests[i], seats[s]) for i in members[k])] for k in K
-    ]
-
-    # Must-apart rules whose guests are forced into one group can never hold.
-    must_apart: list[tuple[int, int]] = []
-    for r in rules:
-        if r["kind"] == "apart" and r["strength"] == "must":
-            a, b = (index.get(i) for i in r["guest_ids"][:2])
-            if a is None or b is None:
-                continue
-            if grp[a] == grp[b]:
-                messages.append(
-                    f"Rule {r['id']} keeps {guests[a]['name']} and {guests[b]['name']} apart, but "
-                    "households or must-together rules force them to share a table."
-                )
-                return respond("INFEASIBLE")
-            must_apart.append((grp[a], grp[b]))
-
-    total_capacity = sum(s.capacity for s in seats)
-    force_all = total_capacity >= n
-
-    # ---- model ----------------------------------------------------------------------------------------
+    # ---- model: variables and physical constraints ------------------------------------------------------
     model = cp_model.CpModel()
-    y: dict[tuple[int, int], cp_model.IntVar] = {}
-    for k in K:
-        if force_all and not allowed[k]:
-            messages.append(
-                f"{guests[members[k][0]]['name']}'s group has no seat allowed by the gender-zone / sofa rules."
-            )
-            return respond("INFEASIBLE")
-        for s in allowed[k]:
-            y[k, s] = model.NewBoolVar(f"y_{k}_{s}")
+    x = [[model.NewBoolVar(f"x_{g}_{s}") for s in S] for g in G]
 
-    size = [len(m) for m in members]
+    for g in G:                                   # every guest gets exactly one seat object
+        model.AddExactlyOne(x[g])
+    for s in S:                                   # capacity
+        model.Add(sum(x[g][s] for g in G) <= seats[s].capacity)
 
-    # 1. capacity
-    for s in S:
-        terms = [(size[k], y[k, s]) for k in K if (k, s) in y]
-        if terms:
-            model.Add(sum(c * v for c, v in terms) <= seats[s].capacity)
+    # Objective pieces. `soft_*` feed the reported score; `hard_*` hold the Tier-2 penalties.
+    soft_x: dict[tuple[int, int], int] = defaultdict(int)
+    hard_x: dict[tuple[int, int], int] = defaultdict(int)
+    soft_terms: list[tuple[cp_model.IntVar, int]] = []
+    hard_terms: list[tuple[cp_model.IntVar, int]] = []
 
-    # 2. single assignment
-    for k in K:
-        row = [y[k, s] for s in allowed[k]]
-        if row:
-            if force_all:
-                model.AddExactlyOne(row)
-            else:
-                model.AddAtMostOne(row)
+    # ---- Tier 2: relaxable hard constraints -------------------------------------------------------------
+    # Sofas for seniors only: penalty on each non-senior x[g, sofa].
+    if settings["sofas_for_seniors_only"]:
+        for g in G:
+            if guests[g]["age_band"] != "senior":
+                for s in S:
+                    if seats[s].kind == "sofa":
+                        hard_x[g, s] -= PEN_SOFA
 
-    # 6. must apart
-    for ka, kb in must_apart:
+    # Gender zones: penalty on x[g, s] when the seat's zone excludes the guest.
+    def zone_blocks(zone: str, gender: str) -> bool:
+        return (zone == "men" and gender == "female") or (zone == "women" and gender == "male")
+
+    if settings["enforce_gender_zones"]:
         for s in S:
-            if (ka, s) in y and (kb, s) in y:
-                model.Add(y[ka, s] + y[kb, s] <= 1)
+            zone = zones.get(seats[s].id, "mixed")
+            for g in G:
+                if zone_blocks(zone, guests[g]["gender"]):
+                    hard_x[g, s] -= PEN_ZONE
 
-    # ---- objective ------------------------------------------------------------------------------------
-    lin: dict[tuple[int, int], int] = defaultdict(int)  # coefficient on y[k, s]
-    extra_vars: list[cp_model.IntVar] = []
-    extra_coefs: list[int] = []
+    def together_vars(tag: str, ids: list[int]) -> tuple[list[cp_model.IntVar], list[cp_model.IntVar]]:
+        """m[s] = number of `ids` at the group's main seat object (dom[s] marks that main seat).
 
-    def add_extra(var: cp_model.IntVar, coef: int) -> None:
-        extra_vars.append(var)
-        extra_coefs.append(coef)
+        Maximising sum(m) minimises the members who are separated from the main seat object.
+        """
+        k = len(ids)
+        ms, doms = [], []
+        for s in S:
+            m = model.NewIntVar(0, min(k, seats[s].capacity), f"m_{tag}_{s}")
+            dom = model.NewBoolVar(f"dom_{tag}_{s}")
+            model.Add(m <= sum(x[i][s] for i in ids))
+            model.Add(m <= k * dom)
+            ms.append(m)
+            doms.append(dom)
+        model.AddAtMostOne(doms)
+        return ms, doms
 
+    # Households together: penalty per member separated from the household's main table.
+    if settings["households_together"]:
+        by_household: dict[str, list[int]] = defaultdict(list)
+        for g in G:
+            h = guests[g]["household"].strip()
+            if h:
+                by_household[h].append(g)
+        for h, ids in by_household.items():
+            if len(ids) >= 2:
+                ms, _ = together_vars(f"hh{len(hard_terms)}", ids)
+                hard_terms += [(m, PEN_HOUSEHOLD) for m in ms]
+
+    # Must-together rules: same, with a higher penalty.
+    for r in rules:
+        ids = known(r["guest_ids"])
+        if r["kind"] == "together" and r["strength"] == "must" and len(ids) >= 2:
+            ms, _ = together_vars(f"mt_{r['id']}", ids)
+            hard_terms += [(m, PEN_TOGETHER) for m in ms]
+
+    # Must-apart rules: one violation Boolean per pair; it must be 1 if both share any seat object.
+    for r in rules:
+        ids = known(r["guest_ids"])
+        if r["kind"] == "apart" and r["strength"] == "must" and len(ids) == 2:
+            a, b = ids
+            v = model.NewBoolVar(f"viol_apart_{r['id']}")
+            for s in S:
+                model.Add(x[a][s] + x[b][s] <= 1 + v)
+            hard_terms.append((v, -PEN_APART))
+
+    # ---- Tier 1: soft preferences -----------------------------------------------------------------------
     def reward_guests(guest_ids: list[int], weight: float, close: list[float]) -> None:
         if weight <= 0:
             return
-        for i in guest_ids:
-            k = grp[i]
-            for s in allowed[k]:
-                lin[k, s] += round(weight * SCALE * close[s])
+        for g in guest_ids:
+            for s in S:
+                soft_x[g, s] += round(weight * SCALE * close[s])
 
-    if stages:
-        stage_d = [min_distance(seat.geom, stages) for seat in seats]
-    if openings:
-        door_d = [min_distance(seat.geom, openings) for seat in seats]
+    stage_d = [min_distance(seat.geom, stages) for seat in seats] if stages else []
+    door_d = [min_distance(seat.geom, openings) for seat in seats] if openings else []
 
-    vips = [(i, g["vip"]) for i, g in enumerate(guests) if g["vip"] != "none"]
-    mobile = [i for i, g in enumerate(guests) if g["mobility"] != "none"]
-    seniors = [i for i, g in enumerate(guests) if g["age_band"] == "senior"]
+    vips = [(g, guests[g]["vip"]) for g in G if guests[g]["vip"] != "none"]
+    mobile = [g for g in G if guests[g]["mobility"] != "none"]
+    seniors = [g for g in G if guests[g]["age_band"] == "senior"]
 
-    # 1. VIP proximity
-    if settings["vip_near_stage"] and vips:
+    if settings["vip_near_stage"] and vips:                          # VIP proximity
         if stages:
             close = _closeness(stage_d, settings["vip_max_distance_m"])
-            reward_guests([i for i, v in vips if v == "vip"], VIP_WEIGHT, close)
-            reward_guests([i for i, v in vips if v == "chief_guest"], CHIEF_GUEST_WEIGHT, close)
+            reward_guests([g for g, v in vips if v == "vip"], VIP_WEIGHT, close)
+            reward_guests([g for g, v in vips if v == "chief_guest"], CHIEF_GUEST_WEIGHT, close)
         else:
             messages.append("VIP proximity skipped: the hall has no stage.")
-    # 2. Accessibility proximity
-    if settings["accessible_near_entrance"] and mobile:
+    if settings["accessible_near_entrance"] and mobile:              # accessibility proximity
         if openings:
-            close = _closeness(door_d, settings["accessible_max_distance_m"])
-            reward_guests(mobile, ACCESS_WEIGHT, close)
+            reward_guests(mobile, ACCESS_WEIGHT, _closeness(door_d, settings["accessible_max_distance_m"]))
         else:
             messages.append("Accessibility proximity skipped: the hall has no entrance or exit.")
-    # 3. Elders near exits
-    if weights["elders_near_exits"] > 0 and seniors and openings:
+    if weights["elders_near_exits"] > 0 and seniors and openings:    # elders near exits
         reward_guests(seniors, weights["elders_near_exits"], _closeness(door_d, None))
-    # 4. Seniors near stage
-    if weights["seniors_near_stage"] > 0 and seniors and stages:
+    if weights["seniors_near_stage"] > 0 and seniors and stages:     # seniors near stage
         reward_guests(seniors, weights["seniors_near_stage"], _closeness(stage_d, None))
 
-    # 5. Balance bride / groom sides: minimise |bride - groom| at each seat object
+    # Balance sides: minimise |bride - groom| at each seat object.
     w = weights["balance_sides"]
-    if w > 0:
-        sides = [g["side"] for g in guests]
-        if "bride" in sides and "groom" in sides:
-            for s in S:
-                bride, groom = [], []
-                for k in K:
-                    if (k, s) not in y:
-                        continue
-                    b = sum(1 for i in members[k] if sides[i] == "bride")
-                    gm = sum(1 for i in members[k] if sides[i] == "groom")
-                    if b:
-                        bride.append(b * y[k, s])
-                    if gm:
-                        groom.append(gm * y[k, s])
-                if not bride and not groom:
-                    continue
-                diff = model.NewIntVar(0, seats[s].capacity, f"imbalance_{s}")
-                model.Add(diff >= sum(bride) - sum(groom))
-                model.Add(diff >= sum(groom) - sum(bride))
-                add_extra(diff, -w * BALANCE_UNIT)
+    sides = [g["side"] for g in guests]
+    if w > 0 and "bride" in sides and "groom" in sides:
+        brides = [g for g in G if sides[g] == "bride"]
+        grooms = [g for g in G if sides[g] == "groom"]
+        for s in S:
+            diff = model.NewIntVar(0, seats[s].capacity, f"imbalance_{s}")
+            b = sum(x[g][s] for g in brides)
+            gm = sum(x[g][s] for g in grooms)
+            model.Add(diff >= b - gm)
+            model.Add(diff >= gm - b)
+            soft_terms.append((diff, -w * BALANCE_UNIT))
 
-    # 6. Similar ages: minimise distinct age bands per seat object
+    # Similar ages: minimise distinct age bands per seat object.
     w = weights["similar_ages"]
     if w > 0 and len({g["age_band"] for g in guests}) > 1:
-        bands_of = [sorted({guests[i]["age_band"] for i in members[k]}) for k in K]
         present: dict[tuple[int, str], cp_model.IntVar] = {}
-        for k in K:
-            for s in allowed[k]:
-                for band in bands_of[k]:
-                    p = present.get((s, band))
-                    if p is None:
-                        p = present[s, band] = model.NewBoolVar(f"band_{s}_{band}")
-                        add_extra(p, -w * AGE_UNIT)
-                    model.Add(p >= y[k, s])
+        for g in G:
+            band = guests[g]["age_band"]
+            for s in S:
+                p = present.get((s, band))
+                if p is None:
+                    p = present[s, band] = model.NewBoolVar(f"band_{s}_{band}")
+                    soft_terms.append((p, -w * AGE_UNIT))
+                model.Add(p >= x[g][s])
 
-    # 7. Prefer together / apart
+    # Prefer together / apart.
     for r in rules:
         if r["strength"] != "prefer":
             continue
         ids = known(r["guest_ids"])
         u = r["weight"] * PREF_UNIT
         if r["kind"] == "together" and len(ids) >= 2:
-            dom_vars = []
-            for s in S:
-                at_s = [y[grp[i], s] for i in ids if (grp[i], s) in y]
-                if not at_s:
-                    continue
-                dom = model.NewBoolVar(f"dom_{r['id']}_{s}")
-                m = model.NewIntVar(0, len(ids), f"m_{r['id']}_{s}")
-                model.Add(m <= sum(at_s))
-                model.Add(m <= len(ids) * dom)
-                dom_vars.append(dom)
-                add_extra(m, u)    # +u per member at the shared table...
-                add_extra(dom, -u)  # ...minus one, so the first member earns nothing
-            if dom_vars:
-                model.AddAtMostOne(dom_vars)
+            ms, doms = together_vars(f"pt_{r['id']}", ids)
+            soft_terms += [(m, u) for m in ms]       # +u per member at the shared table...
+            soft_terms += [(d, -u) for d in doms]    # ...minus one, so the first member earns nothing
         elif r["kind"] == "apart" and len(ids) == 2:
             a, b = ids
-            if grp[a] == grp[b]:
-                messages.append(f"Rule {r['id']} (prefer apart) cannot be met: both guests are in one forced group.")
-                continue
+            v = model.NewBoolVar(f"viol_papart_{r['id']}")
             for s in S:
-                if (grp[a], s) in y and (grp[b], s) in y:
-                    z = model.NewBoolVar(f"apart_{r['id']}_{s}")
-                    model.Add(z >= y[grp[a], s] + y[grp[b], s] - 1)
-                    add_extra(z, -u)
+                model.Add(x[a][s] + x[b][s] <= 1 + v)
+            soft_terms.append((v, -u))
 
+    # ---- objective ----------------------------------------------------------------------------------------
     obj_vars: list[cp_model.IntVar] = []
     obj_coefs: list[int] = []
-    for (k, s), v in y.items():
-        obj_vars.append(v)
-        obj_coefs.append(ASSIGN_BONUS * size[k] + lin.get((k, s), 0))
-    obj_vars += extra_vars
-    obj_coefs += extra_coefs
+    for g in G:
+        for s in S:
+            c = soft_x.get((g, s), 0) + hard_x.get((g, s), 0)
+            if c:
+                obj_vars.append(x[g][s])
+                obj_coefs.append(c)
+    for var, c in soft_terms + hard_terms:
+        obj_vars.append(var)
+        obj_coefs.append(c)
     model.Maximize(cp_model.LinearExpr.WeightedSum(obj_vars, obj_coefs))
 
-    # ---- solve ----------------------------------------------------------------------------------------
+    # ---- solve ------------------------------------------------------------------------------------------
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = float(opts["time_limit_seconds"])
     solver.parameters.num_workers = int(opts["num_workers"])
     solver.parameters.random_seed = 1
     status = solver.Solve(model)
 
-    if status == cp_model.INFEASIBLE:
-        messages.append("No seating satisfies all hard constraints.")
+    if status == cp_model.INFEASIBLE:  # should not happen: seats >= guests and only soft penalties remain
+        messages.append("Unexpected: the model is infeasible although the hall has enough seats.")
         return respond("INFEASIBLE")
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         messages.append("No solution found within the time limit.")
         return respond("UNKNOWN")
 
+    seat_of = [next(s for s in S if solver.BooleanValue(x[g][s])) for g in G]
     at_seat: dict[int, list[int]] = defaultdict(list)
-    for (k, s), v in y.items():
-        if solver.BooleanValue(v):
-            at_seat[s].extend(members[k])
-    placed: dict[str, tuple[str, int]] = {}
-    for s, idxs in at_seat.items():
-        for pos, i in enumerate(sorted(idxs)):
-            placed[guests[i]["id"]] = (seats[s].id, pos)
+    for g in G:
+        at_seat[seat_of[g]].append(g)
+    placed = {
+        guests[g]["id"]: (seats[s].id, pos)
+        for s, members in at_seat.items()
+        for pos, g in enumerate(members)
+    }
 
-    score = int(round(solver.ObjectiveValue())) - ASSIGN_BONUS * len(placed)
-    return respond("OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE", placed, score)
+    # Clean score: soft terms only (no Tier-2 penalties).
+    score = sum(soft_x.get((g, seat_of[g]), 0) for g in G)
+    score += sum(c * solver.Value(v) for v, c in soft_terms)
+
+    broken = _find_broken(guests, seats, seat_of, rules, settings, zones, known, stage_d, door_d)
+    return respond("OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE", placed, int(score), broken)
+
+
+# ---- broken-constraint report ------------------------------------------------------------------------------
+def _find_broken(
+    guests: list[dict[str, Any]],
+    seats: list[Seat],
+    seat_of: list[int],
+    rules: list[dict[str, Any]],
+    settings: dict[str, Any],
+    zones: dict[str, str],
+    known: Any,
+    stage_d: list[float],
+    door_d: list[float],
+) -> list[dict[str, Any]]:
+    """Inspect the final seating and list every rule it breaks (hard ones first)."""
+    out: list[dict[str, Any]] = []
+
+    def entry(kind: str, code: str, message: str, gids: list[int], sids: list[int], rule_id: str | None = None):
+        prefix = "Broken constraint" if kind == "hard" else "Broken soft preference"
+        item: dict[str, Any] = {
+            "type": kind,
+            "code": code,
+            "message": f"{prefix}: {message}",
+            "guest_ids": [guests[g]["id"] for g in gids],
+            "seat_ids": sorted({seats[s].id for s in sids}),
+        }
+        if rule_id:
+            item["rule_id"] = rule_id
+        out.append(item)
+
+    def names(ids: list[int]) -> str:
+        return ", ".join(f"'{guests[g]['name']}'" for g in ids)
+
+    # Must apart
+    for r in rules:
+        ids = known(r["guest_ids"])
+        if r["kind"] == "apart" and r["strength"] == "must" and len(ids) == 2 and seat_of[ids[0]] == seat_of[ids[1]]:
+            entry("hard", "must_apart",
+                  f"'Sit apart' rule {r['id']} - {names(ids)} were seated together at '{seats[seat_of[ids[0]]].id}'.",
+                  ids, [seat_of[ids[0]]], r["id"])
+
+    # Gender zones
+    if settings["enforce_gender_zones"]:
+        for g, s in enumerate(seat_of):
+            zone = zones.get(seats[s].id, "mixed")
+            gender = guests[g]["gender"]
+            if (zone == "men" and gender == "female") or (zone == "women" and gender == "male"):
+                entry("hard", "enforce_gender_zones",
+                      f"Gender zones - {gender} guest '{guests[g]['name']}' was seated at '{seats[s].id}' ({zone} zone).",
+                      [g], [s])
+
+    # Must together
+    for r in rules:
+        ids = known(r["guest_ids"])
+        if r["kind"] == "together" and r["strength"] == "must" and len(ids) >= 2:
+            used = {seat_of[g] for g in ids}
+            if len(used) > 1:
+                entry("hard", "must_together",
+                      f"'Sit together' rule {r['id']} - {names(ids)} were split across {len(used)} seats "
+                      f"({', '.join(sorted(seats[s].id for s in used))}).", ids, list(used), r["id"])
+
+    # Households
+    if settings["households_together"]:
+        by_household: dict[str, list[int]] = defaultdict(list)
+        for g, guest in enumerate(guests):
+            h = guest["household"].strip()
+            if h:
+                by_household[h].append(g)
+        for h, ids in by_household.items():
+            used = {seat_of[g] for g in ids}
+            if len(ids) >= 2 and len(used) > 1:
+                entry("hard", "households_together",
+                      f"Households together - household '{h}' ({names(ids)}) was split across {len(used)} seats "
+                      f"({', '.join(sorted(seats[s].id for s in used))}).", ids, list(used))
+
+    # Sofas for seniors only
+    if settings["sofas_for_seniors_only"]:
+        for g, s in enumerate(seat_of):
+            if seats[s].kind == "sofa" and guests[g]["age_band"] != "senior":
+                entry("hard", "sofas_for_seniors_only",
+                      f"Sofas for seniors only - non-senior guest '{guests[g]['name']}' was seated on '{seats[s].id}'.",
+                      [g], [s])
+
+    # Soft: prefer rules
+    for r in rules:
+        if r["strength"] != "prefer":
+            continue
+        ids = known(r["guest_ids"])
+        used = {seat_of[g] for g in ids}
+        if r["kind"] == "together" and len(ids) >= 2 and len(used) > 1:
+            entry("soft", "prefer_together",
+                  f"'Sit together' preference {r['id']} - {names(ids)} were not all seated together.",
+                  ids, list(used), r["id"])
+        elif r["kind"] == "apart" and len(ids) == 2 and seat_of[ids[0]] == seat_of[ids[1]]:
+            entry("soft", "prefer_apart",
+                  f"'Sit apart' preference {r['id']} - {names(ids)} were seated together at '{seats[seat_of[ids[0]]].id}'.",
+                  ids, [seat_of[ids[0]]], r["id"])
+
+    # Soft: proximity limits from the settings
+    if settings["vip_near_stage"] and stage_d:
+        for g, guest in enumerate(guests):
+            if guest["vip"] != "none" and stage_d[seat_of[g]] > settings["vip_max_distance_m"]:
+                entry("soft", "vip_near_stage",
+                      f"VIP near stage - '{guest['name']}' is {stage_d[seat_of[g]]:.1f} m from the stage "
+                      f"(limit {settings['vip_max_distance_m']:g} m).", [g], [seat_of[g]])
+    if settings["accessible_near_entrance"] and door_d:
+        for g, guest in enumerate(guests):
+            if guest["mobility"] != "none" and door_d[seat_of[g]] > settings["accessible_max_distance_m"]:
+                entry("soft", "accessible_near_entrance",
+                      f"Accessible near entrance - '{guest['name']}' is {door_d[seat_of[g]]:.1f} m from an entrance "
+                      f"(limit {settings['accessible_max_distance_m']:g} m).", [g], [seat_of[g]])
+    return out
