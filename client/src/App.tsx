@@ -1,5 +1,4 @@
 import { Route, Routes } from "react-router-dom";
-import AppShell from "./app/AppShell";
 import HallDesignerPage from "./features/hall-designer/components/HallDesignerPage";
 import CurtainSplash from "./features/splash/CurtainSplash";
 import ConstraintsPage from "./pages/ConstraintsPage";
@@ -13,14 +12,14 @@ export default function App() {
     <>
       <CurtainSplash />
       <Routes>
-        <Route element={<AppShell />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/guests" element={<GuestsPage />} />
-          <Route path="/designer" element={<HallDesignerPage />} />
-          <Route path="/constraints" element={<ConstraintsPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
+
+        <Route path="/" element={<HomePage />} />
+        <Route path="/guests" element={<GuestsPage />} />
+        <Route path="/designer" element={<HallDesignerPage />} />
+        <Route path="/constraints" element={<ConstraintsPage />} />
+        <Route path="/results" element={<ResultsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+
       </Routes>
     </>
   );
