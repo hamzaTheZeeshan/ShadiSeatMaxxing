@@ -5,6 +5,7 @@ import { OPENING_THICKNESS } from "../../utils/defaults";
 // Neo-brutalist theme, same palette as the home page and the canvas.
 const INK = "#111111";
 const CREAM = "#fff4dc";
+const STROKE = 0.14;
 
 const FILL: Record<string, string> = {
   sofa: "#f6b8f6",
@@ -18,7 +19,7 @@ const FILL: Record<string, string> = {
 
 function renderObject(o: HallObject) {
   if (o.type === "table" && o.shape === "round") {
-    return <circle key={o.id} cx={o.x} cy={o.y} r={o.radius} fill="#ffffff" stroke={INK} strokeWidth={0.18} />;
+    return <circle key={o.id} cx={o.x} cy={o.y} r={o.radius} fill="#ffffff" stroke={INK} strokeWidth={STROKE} />;
   }
   const w = o.width;
   const h = "height" in o ? o.height : OPENING_THICKNESS * 2;
@@ -33,20 +34,21 @@ function renderObject(o: HallObject) {
       transform={`rotate(${o.rotation} ${o.x} ${o.y})`}
       fill={isTable ? "#ffffff" : FILL[o.type]}
       stroke={INK}
-      strokeWidth={0.18}
+      strokeWidth={STROKE}
     />
   );
 }
 
 export default function PresetPreview({ preset }: { preset: HallPreset }) {
   const { hall, objects } = preset.layout;
-  const pad = 1;
+  const pad = 0.5;
   return (
     <svg
       viewBox={`${-pad} ${-pad} ${hall.width + pad * 2} ${hall.height + pad * 2}`}
+      preserveAspectRatio="xMidYMid meet"
       style={{
         width: "100%",
-        height: 120,
+        height: 140,
         display: "block",
         background: CREAM,
         border: `2px solid ${INK}`,
@@ -55,7 +57,7 @@ export default function PresetPreview({ preset }: { preset: HallPreset }) {
       role="img"
       aria-label={`Preview of ${preset.name}`}
     >
-      <rect x={0} y={0} width={hall.width} height={hall.height} fill="#ffffff" stroke={INK} strokeWidth={0.3} />
+      <rect x={0} y={0} width={hall.width} height={hall.height} fill="#ffffff" stroke={INK} strokeWidth={0.25} />
       {objects.map(renderObject)}
     </svg>
   );

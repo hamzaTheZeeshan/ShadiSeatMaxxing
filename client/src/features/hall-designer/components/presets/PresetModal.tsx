@@ -35,18 +35,26 @@ const s = {
   } satisfies CSSProperties,
   title: { margin: 0, fontSize: 18, fontWeight: 700, color: INK } satisfies CSSProperties,
   grid: {
-    padding: 20, overflowY: "auto", display: "grid", gap: 16,
+    padding: 20, overflowY: "auto", display: "grid", gap: 20,
     gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
   } satisfies CSSProperties,
   card: {
     textAlign: "left", padding: 10, borderRadius: 0, background: "#fff",
     border: `2px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`,
     cursor: "pointer", font: "inherit", color: INK,
+    display: "flex", flexDirection: "column", gap: 8,
   } satisfies CSSProperties,
   cardSelected: { background: YELLOW } satisfies CSSProperties,
-  cardName: { fontSize: 13, fontWeight: 700, margin: "10px 0 2px" } satisfies CSSProperties,
-  meta: { fontSize: 11, color: "#4b4b4b", margin: "0 0 4px" } satisfies CSSProperties,
-  desc: { fontSize: 11, color: INK, margin: 0, lineHeight: 1.5 } satisfies CSSProperties,
+  cardName: { fontSize: 14, fontWeight: 700, margin: "2px 0 0" } satisfies CSSProperties,
+  stats: { display: "flex", gap: 6, flexWrap: "wrap" } satisfies CSSProperties,
+  chip: {
+    fontSize: 11, fontWeight: 700, padding: "2px 8px",
+    border: `2px solid ${INK}`, background: CREAM, whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  desc: {
+    fontSize: 11, color: "#4b4b4b", margin: 0, lineHeight: 1.5,
+    display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden",
+  } satisfies CSSProperties,
   footer: {
     padding: "12px 20px", borderTop: `2px solid ${INK}`, background: MINT, display: "flex",
     alignItems: "center", justifyContent: "flex-end", gap: 10, flexWrap: "wrap",
@@ -111,9 +119,10 @@ export default function PresetModal({ open, hasObjects, onClose, onApply }: Prop
             >
               <PresetPreview preset={p} />
               <p style={s.cardName}>{p.name}</p>
-              <p style={s.meta}>
-                {p.layout.hall.width} × {p.layout.hall.height} m · {p.tableCount} tables · {p.guestCount} guests
-              </p>
+              <div style={s.stats}>
+                <span style={s.chip}>{p.layout.hall.width} × {p.layout.hall.height} m</span>
+                <span style={s.chip}>{p.guestCount} seats</span>
+              </div>
               <p style={s.desc}>{p.description}</p>
             </button>
           ))}
@@ -122,7 +131,7 @@ export default function PresetModal({ open, hasObjects, onClose, onApply }: Prop
         <div style={s.footer}>
           {confirming && (
             <div style={s.warning} role="alert">
-              This replaces your current layout and clears undo history. Export or Save first if you want to keep it.
+              This replaces your current layout. Save or export first to keep it.
             </div>
           )}
           <button type="button" style={s.button} onClick={confirming ? () => setConfirming(false) : onClose}>
