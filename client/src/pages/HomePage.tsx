@@ -64,9 +64,7 @@ type IconName =
   | "rules"
   | "results"
   | "layout"
-  | "heart"
   | "check"
-  | "bell"
   | "back"
   | "arrow";
 
@@ -114,16 +112,7 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
       <rect x="3" y="14" width="7" height="7" />
     </>
   ),
-  heart: (
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  ),
   check: <polyline points="20 6 9 17 4 12" />,
-  bell: (
-    <>
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </>
-  ),
   back: (
     <>
       <line x1="19" y1="12" x2="5" y2="12" />
@@ -564,12 +553,6 @@ export default function HomePage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <Link to="/results" className="sp-focus" style={styles.squareBtn} aria-label="Results">
-              <Icon name="bell" size={14} />
-            </Link>
-            <span style={styles.avatar} aria-hidden="true">
-              <Icon name="heart" size={14} />
-            </span>
           </div>
 
           {/* Title + profile / how it works */}
@@ -672,7 +655,6 @@ export default function HomePage() {
             <div className="sp-card" style={styles.pinkCard}>
               <div style={styles.pinkTop}>
                 <div style={styles.pinkStatus}>
-                  <Icon name="heart" size={20} />
                   {planLabel}
                 </div>
                 <Link to="/results" className="sp-hover sp-focus" style={styles.pinkBtn}>

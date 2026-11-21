@@ -59,7 +59,7 @@ const CSS = `
 `;
 
 /* ---------- icons ---------- */
-type IconName = "hall" | "guests" | "rules" | "results" | "layout" | "heart" | "bell" | "back";
+type IconName = "hall" | "guests" | "rules" | "results" | "layout"| "back";
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   hall: (
@@ -103,15 +103,6 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
       <rect x="14" y="3" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
       <rect x="3" y="14" width="7" height="7" />
-    </>
-  ),
-  heart: (
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-  ),
-  bell: (
-    <>
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </>
   ),
   back: (
@@ -390,12 +381,6 @@ export default function ConstraintsPage() {
             >
               <Icon name="back" />
             </button>
-            <Link to="/results" className="cp-focus" style={{ ...styles.squareBtn, ...styles.topSpacer }} aria-label="Results">
-              <Icon name="bell" />
-            </Link>
-            <span style={styles.avatar} aria-hidden="true">
-              <Icon name="heart" />
-            </span>
           </div>
 
       <div>
