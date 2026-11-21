@@ -12,47 +12,55 @@ interface Props {
   onApply: (preset: HallPreset) => void;
 }
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const CREAM = "#fff4dc";
+const MINT = "#a8d5b5";
+const YELLOW = "#f8c335";
+const FONT = "'IBM Plex Mono', 'JetBrains Mono', 'Courier New', ui-monospace, monospace";
+
 const s = {
   backdrop: {
-    position: "fixed", inset: 0, background: "rgba(17,24,39,0.5)", zIndex: 1000,
+    position: "fixed", inset: 0, background: "rgba(17,17,17,0.55)", zIndex: 1000,
     display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
   } satisfies CSSProperties,
   dialog: {
-    background: "#fff", borderRadius: 10, width: "min(920px, 100%)", maxHeight: "90vh",
+    background: CREAM, borderRadius: 0, width: "min(920px, 100%)", maxHeight: "90vh",
     display: "flex", flexDirection: "column", overflow: "hidden",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.3)", fontFamily: "system-ui, sans-serif",
+    border: `2px solid ${INK}`, boxShadow: `8px 8px 0 ${INK}`, fontFamily: FONT, color: INK,
   } satisfies CSSProperties,
   header: {
-    padding: "14px 20px", borderBottom: "1px solid #e5e7eb",
+    padding: "14px 20px", borderBottom: `2px solid ${INK}`, background: MINT,
     display: "flex", justifyContent: "space-between", alignItems: "center",
   } satisfies CSSProperties,
-  title: { margin: 0, fontSize: 18, color: "#111827" } satisfies CSSProperties,
+  title: { margin: 0, fontSize: 18, fontWeight: 700, color: INK } satisfies CSSProperties,
   grid: {
-    padding: 20, overflowY: "auto", display: "grid", gap: 14,
+    padding: 20, overflowY: "auto", display: "grid", gap: 16,
     gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
   } satisfies CSSProperties,
   card: {
-    textAlign: "left", padding: 10, borderRadius: 8, background: "#fff",
-    border: "2px solid #e5e7eb", cursor: "pointer", font: "inherit", color: "#111827",
+    textAlign: "left", padding: 10, borderRadius: 0, background: "#fff",
+    border: `2px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`,
+    cursor: "pointer", font: "inherit", color: INK,
   } satisfies CSSProperties,
-  cardSelected: { borderColor: "#2563eb", background: "#eff6ff" } satisfies CSSProperties,
-  cardName: { fontSize: 14, fontWeight: 600, margin: "8px 0 2px" } satisfies CSSProperties,
-  meta: { fontSize: 12, color: "#4b5563", margin: "0 0 4px" } satisfies CSSProperties,
-  desc: { fontSize: 12, color: "#6b7280", margin: 0, lineHeight: 1.4 } satisfies CSSProperties,
+  cardSelected: { background: YELLOW } satisfies CSSProperties,
+  cardName: { fontSize: 13, fontWeight: 700, margin: "10px 0 2px" } satisfies CSSProperties,
+  meta: { fontSize: 11, color: "#4b4b4b", margin: "0 0 4px" } satisfies CSSProperties,
+  desc: { fontSize: 11, color: INK, margin: 0, lineHeight: 1.5 } satisfies CSSProperties,
   footer: {
-    padding: "12px 20px", borderTop: "1px solid #e5e7eb", display: "flex",
+    padding: "12px 20px", borderTop: `2px solid ${INK}`, background: MINT, display: "flex",
     alignItems: "center", justifyContent: "flex-end", gap: 10, flexWrap: "wrap",
   } satisfies CSSProperties,
   warning: {
-    flex: 1, minWidth: 220, fontSize: 13, color: "#b45309", background: "#fffbeb",
-    border: "1px solid #fde68a", borderRadius: 6, padding: "6px 10px",
+    flex: 1, minWidth: 220, fontSize: 12, fontWeight: 600, color: INK, background: YELLOW,
+    border: `2px solid ${INK}`, borderRadius: 0, padding: "6px 10px",
   } satisfies CSSProperties,
   button: {
-    padding: "6px 14px", fontSize: 13, border: "1px solid #d1d5db",
-    borderRadius: 6, background: "#fff", color: "#111827", cursor: "pointer",
+    padding: "7px 14px", fontFamily: "inherit", fontSize: 12, fontWeight: 700,
+    border: `2px solid ${INK}`, borderRadius: 0, background: "#fff", color: INK, cursor: "pointer",
   } satisfies CSSProperties,
-  primary: { background: "#2563eb", borderColor: "#2563eb", color: "#fff" } satisfies CSSProperties,
-  danger: { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } satisfies CSSProperties,
+  primary: { background: INK, color: "#fff", boxShadow: "3px 3px 0 rgba(17,17,17,0.35)" } satisfies CSSProperties,
+  danger: { background: "#ff6b6b", color: INK, boxShadow: `3px 3px 0 ${INK}` } satisfies CSSProperties,
 };
 
 export default function PresetModal({ open, hasObjects, onClose, onApply }: Props) {

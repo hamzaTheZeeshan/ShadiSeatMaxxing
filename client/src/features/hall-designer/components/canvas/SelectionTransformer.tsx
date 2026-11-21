@@ -192,10 +192,14 @@ export default function SelectionTransformer() {
       rotationSnapTolerance={ROTATION_STEP / 2}
       boundBoxFunc={boundBoxFunc}
       onTransformEnd={handleTransformEnd}
-      borderStroke="#2563eb"
-      anchorStroke="#2563eb"
-      anchorFill="#ffffff"
-      anchorSize={9}
+      borderStroke="#111111"
+      borderStrokeWidth={2}
+      anchorStroke="#111111"
+      anchorStrokeWidth={2}
+      anchorFill="#f8c335"
+      anchorCornerRadius={0}
+      anchorSize={11}
+      rotateAnchorOffset={28}
     />
   );
 }

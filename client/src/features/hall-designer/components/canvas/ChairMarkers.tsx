@@ -3,6 +3,9 @@ import { Circle } from "react-konva";
 import type { TableObject } from "../../types/layout";
 import { CHAIR_RADIUS, generateChairs } from "../../utils/chairs";
 
+const INK = "#111111";
+const CHAIR_FILL = "#f6b8f6";
+
 interface ChairMarkersProps {
   table: TableObject;
 }
@@ -18,9 +21,9 @@ function ChairMarkers({ table }: ChairMarkersProps) {
           x={chair.x}
           y={chair.y}
           radius={CHAIR_RADIUS}
-          fill="#e5e7eb"
-          stroke="#6b7280"
-          strokeWidth={1}
+          fill={CHAIR_FILL}
+          stroke={INK}
+          strokeWidth={2}
           strokeScaleEnabled={false}
           listening={false}
         />

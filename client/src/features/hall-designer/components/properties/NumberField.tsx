@@ -35,19 +35,20 @@ function validate(text: string, min: number | undefined, max: number | undefined
 
 const styles = {
   field: { display: "flex", flexDirection: "column", gap: 2, marginBottom: 10 } satisfies CSSProperties,
-  label: { fontSize: 12, color: "#374151", fontWeight: 600 } satisfies CSSProperties,
+  label: { fontSize: 11, color: "#111111", fontWeight: 700 } satisfies CSSProperties,
   input: {
-    padding: "5px 7px",
-    fontSize: 13,
-    border: "1px solid #9ca3af",
-    borderRadius: 4,
-    background: "#ffffff",
-    color: "#111827",
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: "2px solid #111111",
+    borderRadius: 0,
+    background: "#fffdf6",
+    color: "#111111",
     width: "100%",
     boxSizing: "border-box",
   } satisfies CSSProperties,
-  inputError: { border: "1px solid #dc2626", background: "#fef2f2" } satisfies CSSProperties,
-  error: { fontSize: 11, color: "#b91c1c" } satisfies CSSProperties,
+  inputError: { border: "2px solid #dc2626", background: "#ffd6d6" } satisfies CSSProperties,
+  error: { fontSize: 11, fontWeight: 600, color: "#b91c1c" } satisfies CSSProperties,
 };
 
 export default function NumberField({ label, value, onCommit, min, max, integer, step }: NumberFieldProps) {

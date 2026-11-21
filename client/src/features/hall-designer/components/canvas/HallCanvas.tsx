@@ -8,6 +8,12 @@ import { createObject } from "../../utils/defaults";
 import { snapPoint } from "../../utils/snap";
 import ObjectLayer from "./ObjectLayer";
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const CANVAS_BG = "#fff4dc"; // cream
+const FLOOR_FILL = "#ffffff";
+const GRID_STROKE = "rgba(17, 17, 17, 0.14)";
+
 const ZOOM_FACTOR = 1.1;
 const MIN_SCALE = 5;
 const MAX_SCALE = 200;
@@ -113,7 +119,7 @@ export default function HallCanvas() {
   return (
     <div
       ref={ref}
-      style={{ flex: 1, minHeight: 0, background: "#f9fafb", cursor: tool === "select" ? "grab" : "crosshair" }}
+      style={{ flex: 1, minHeight: 0, background: CANVAS_BG, cursor: tool === "select" ? "grab" : "crosshair" }}
     >
       {size.width > 0 && size.height > 0 && (
         <Stage
@@ -132,9 +138,9 @@ export default function HallCanvas() {
           onWheel={handleWheel}
         >
           <Layer listening={false}>
-            <Rect x={0} y={0} width={hallWidth} height={hallHeight} fill="#ffffff" />
+            <Rect x={0} y={0} width={hallWidth} height={hallHeight} fill={FLOOR_FILL} />
             <Shape
-              stroke="#e5e7eb"
+              stroke={GRID_STROKE}
               strokeWidth={1}
               strokeScaleEnabled={false}
               sceneFunc={(ctx, shape) => {
@@ -159,8 +165,8 @@ export default function HallCanvas() {
               y={0}
               width={hallWidth}
               height={hallHeight}
-              stroke="#111827"
-              strokeWidth={2}
+              stroke={INK}
+              strokeWidth={4}
               strokeScaleEnabled={false}
             />
           </Layer>

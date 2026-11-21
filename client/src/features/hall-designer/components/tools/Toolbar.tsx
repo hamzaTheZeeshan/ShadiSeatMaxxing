@@ -45,8 +45,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 6,
-    background: "#ffffff",
-    borderRight: "1px solid #e5e7eb",
+    background: "transparent", // the white card around the toolbar comes from the page
     overflowY: "auto",
   } satisfies CSSProperties,
   heading: {
@@ -54,38 +53,50 @@ const styles = {
     fontWeight: 700,
     letterSpacing: 0.5,
     textTransform: "uppercase",
-    color: "#6b7280",
-    margin: "8px 0 2px",
+    color: "#111111",
+    margin: "10px 0 2px",
+    paddingBottom: 4,
+    borderBottom: "2px solid #111111",
   } satisfies CSSProperties,
   button: {
     padding: "7px 10px",
-    fontSize: 13,
+    fontFamily: "inherit",
+    fontSize: 12,
+    fontWeight: 600,
     textAlign: "left",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    background: "#ffffff",
-    color: "#111827",
+    border: "2px solid #111111",
+    borderRadius: 0,
+    background: "#fff4dc",
+    color: "#111111",
     cursor: "pointer",
   } satisfies CSSProperties,
   buttonActive: {
-    background: "#2563eb",
-    borderColor: "#1d4ed8",
+    background: "#111111",
     color: "#ffffff",
-    fontWeight: 600,
+    fontWeight: 700,
   } satisfies CSSProperties,
   buttonDisabled: {
-    opacity: 0.45,
+    opacity: 0.4,
     cursor: "not-allowed",
-    background: "#f3f4f6",
-  } satisfies CSSProperties,
-  row: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#111827" } satisfies CSSProperties,
-  select: {
-    padding: "5px 7px",
-    fontSize: 13,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
     background: "#ffffff",
-    color: "#111827",
+  } satisfies CSSProperties,
+  row: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#111111",
+  } satisfies CSSProperties,
+  checkbox: { width: 16, height: 16, accentColor: "#111111", cursor: "pointer" } satisfies CSSProperties,
+  select: {
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 12,
+    border: "2px solid #111111",
+    borderRadius: 0,
+    background: "#fffdf6",
+    color: "#111111",
   } satisfies CSSProperties,
 };
 
@@ -139,7 +150,7 @@ export default function Toolbar() {
 
       <div style={styles.heading}>Grid</div>
       <label style={styles.row}>
-        <input type="checkbox" checked={snapEnabled} onChange={toggleSnap} />
+        <input type="checkbox" checked={snapEnabled} onChange={toggleSnap} style={styles.checkbox} />
         Snap to grid
       </label>
       <label style={{ ...styles.row, flexDirection: "column", alignItems: "stretch", gap: 2 }}>

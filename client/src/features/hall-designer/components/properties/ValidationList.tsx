@@ -2,31 +2,52 @@ import type { CSSProperties } from "react";
 import { useEditorStore } from "../../store/editorStore";
 import type { ValidationIssue } from "../../utils/validation";
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const MINT = "#a8d5b5";
+const CREAM = "#fff4dc";
+
 const styles = {
-  root: { marginTop: 16, paddingTop: 12, borderTop: "1px solid #e5e7eb" } satisfies CSSProperties,
-  heading: { fontSize: 14, fontWeight: 700, color: "#111827", margin: "0 0 8px" } satisfies CSSProperties,
-  ok: { fontSize: 13, color: "#15803d" } satisfies CSSProperties,
-  list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4 } satisfies CSSProperties,
+  root: { marginTop: 16, paddingTop: 12, borderTop: `2px solid ${INK}` } satisfies CSSProperties,
+  heading: { fontSize: 14, fontWeight: 700, color: INK, margin: "0 0 8px" } satisfies CSSProperties,
+  ok: {
+    display: "inline-block",
+    padding: "4px 8px",
+    fontSize: 12,
+    fontWeight: 700,
+    color: INK,
+    background: MINT,
+    border: `2px solid ${INK}`,
+  } satisfies CSSProperties,
+  list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
   item: {
     display: "flex",
     alignItems: "flex-start",
     gap: 8,
     width: "100%",
     boxSizing: "border-box",
-    padding: "5px 6px",
-    fontSize: 12,
+    padding: "6px 8px",
+    fontFamily: "inherit",
+    fontSize: 11,
     textAlign: "left",
-    color: "#111827",
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 4,
+    color: INK,
+    background: CREAM,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
     cursor: "pointer",
   } satisfies CSSProperties,
-  dot: { flexShrink: 0, width: 8, height: 8, marginTop: 4, borderRadius: "50%" } satisfies CSSProperties,
+  dot: {
+    flexShrink: 0,
+    width: 10,
+    height: 10,
+    marginTop: 2,
+    border: `2px solid ${INK}`,
+    boxSizing: "border-box",
+  } satisfies CSSProperties,
 };
 
-const ERROR_COLOR = "#dc2626";
-const WARNING_COLOR = "#d97706";
+const ERROR_COLOR = "#ff6b6b";
+const WARNING_COLOR = "#f8c335";
 
 interface ValidationListProps {
   issues: ValidationIssue[];

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useConstraintStore } from "../features/constraints/store/constraintStore";
 import { useGuestStore } from "../features/guests/store/guestStore";
 import { useSeatingStore } from "../features/seating/store/seatingStore";
@@ -57,7 +58,17 @@ const CSS = `
 `;
 
 /* ---------- icons (inline, no extra dependency) ---------- */
-type IconName = "hall" | "guests" | "rules" | "results" | "layout" | "heart" | "check" | "arrow";
+type IconName =
+  | "hall"
+  | "guests"
+  | "rules"
+  | "results"
+  | "layout"
+  | "heart"
+  | "check"
+  | "bell"
+  | "back"
+  | "arrow";
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   hall: (
@@ -107,6 +118,18 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
   ),
   check: <polyline points="20 6 9 17 4 12" />,
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </>
+  ),
+  back: (
+    <>
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
   arrow: (
     <>
       <line x1="5" y1="12" x2="19" y2="12" />
@@ -226,12 +249,49 @@ const styles = {
   /* main panel */
   main: {
     margin: "12px 12px 12px 0",
-    padding: "28px 32px 32px",
+    padding: "20px 24px 28px",
     background: CREAM,
     border: `2px solid ${INK}`,
     boxShadow: `4px 4px 0 ${INK}`,
     minWidth: 0,
   } satisfies CSSProperties,
+  topbar: { display: "flex", alignItems: "center", gap: 12, marginBottom: 20 } satisfies CSSProperties,
+  squareBtn: {
+    width: 32,
+    height: 32,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: `2px solid ${INK}`,
+    background: WHITE,
+    cursor: "pointer",
+    padding: 0,
+    color: INK,
+    textDecoration: "none",
+  } satisfies CSSProperties,
+  search: {
+    marginLeft: "auto",
+    width: "100%",
+    maxWidth: 280,
+    padding: "7px 10px",
+    border: `2px solid ${INK}`,
+    background: WHITE,
+    fontFamily: FONT,
+    fontSize: 12,
+    color: INK,
+    boxSizing: "border-box",
+  } satisfies CSSProperties,
+  avatar: {
+    width: 32,
+    height: 32,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: `2px solid ${INK}`,
+    background: PINK,
+    flexShrink: 0,
+  } satisfies CSSProperties,
+  empty: { margin: 0, fontSize: 12, color: MUTED } satisfies CSSProperties,
 
   h1: { margin: "0 0 18px", fontSize: 38, lineHeight: 1.1, fontWeight: 700 } satisfies CSSProperties,
   h2: { margin: 0, fontSize: 38, lineHeight: 1.1, fontWeight: 700 } satisfies CSSProperties,
@@ -400,6 +460,9 @@ const styles = {
 
 /* ---------- page ---------- */
 export default function HomePage() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+
   const guestCount = useGuestStore((s) => s.guests.length);
   const ruleCount = useConstraintStore((s) => s.rules.length);
   const seatingStatus = useSeatingStore((s) => s.status);
@@ -446,6 +509,10 @@ export default function HomePage() {
     },
   ];
 
+  const q = query.trim().toLowerCase();
+  const visibleCards = cards.filter((c) => !q || `${c.label} ${c.sub} ${c.body}`.toLowerCase().includes(q));
+  const showResultsCard = !q || "results plan seating guests".includes(q);
+
   return (
     <div style={styles.page}>
       <style>{CSS}</style>
@@ -477,6 +544,34 @@ export default function HomePage() {
 
         {/* Main panel */}
         <div className="sp-main" style={SHOW_SIDEBAR ? styles.main : { ...styles.main, margin: 12 }}>
+          {/* Top bar */}
+          <div style={styles.topbar}>
+            <button
+              type="button"
+              className="sp-focus"
+              style={styles.squareBtn}
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+            >
+              <Icon name="back" size={14} />
+            </button>
+            <input
+              type="search"
+              className="sp-focus"
+              style={styles.search}
+              placeholder="Find a step, guests, rules…"
+              aria-label="Search the dashboard"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <Link to="/results" className="sp-focus" style={styles.squareBtn} aria-label="Results">
+              <Icon name="bell" size={14} />
+            </Link>
+            <span style={styles.avatar} aria-hidden="true">
+              <Icon name="heart" size={14} />
+            </span>
+          </div>
+
           {/* Title + profile / how it works */}
           <div className="sp-top">
             <div>
@@ -569,7 +664,11 @@ export default function HomePage() {
             </Link>
           </div>
 
+          {visibleCards.length === 0 && !showResultsCard ? (
+            <p style={styles.empty}>Nothing matches “{query}”. Clear the search to see everything.</p>
+          ) : (
           <div className="sp-cards">
+            {showResultsCard ? (
             <div className="sp-card" style={styles.pinkCard}>
               <div style={styles.pinkTop}>
                 <div style={styles.pinkStatus}>
@@ -595,8 +694,9 @@ export default function HomePage() {
                 </svg>
               </div>
             </div>
+            ) : null}
 
-            {cards.map((card) => (
+            {visibleCards.map((card) => (
               <Link key={card.label} to={card.to} className="sp-card sp-hover sp-focus" style={styles.quickCard}>
                 <div style={styles.quickHead}>
                   <span>{card.label}</span>
@@ -610,6 +710,7 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
+          )}
         </div>
       </div>
     </div>

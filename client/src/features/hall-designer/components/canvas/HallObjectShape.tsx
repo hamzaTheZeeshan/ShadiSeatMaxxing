@@ -14,16 +14,20 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${JSON.stringify(value)}`);
 }
 
-const SELECTED_STROKE = "#2563eb";
-const STROKE_WIDTH = 1.5;
-const SELECTED_STROKE_WIDTH = 3;
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const LABEL_FONT = "'IBM Plex Mono', 'JetBrains Mono', 'Courier New', ui-monospace, monospace";
+
+const SELECTED_STROKE = "#ff6b35";
+const STROKE_WIDTH = 2.5;
+const SELECTED_STROKE_WIDTH = 4;
 const ERROR_STROKE = "#dc2626";
 const WARNING_STROKE = "#d97706";
 const ISSUE_STROKE_WIDTH = 2.5;
 
-// Sofa: plush rose body, darker backrest strip, thin cushion dividers.
-const SOFA_BACKREST_FILL = "#db2777";
-const SOFA_CUSHION_STROKE = "#9d174d";
+// Sofa: pink body, darker pink backrest strip, ink cushion dividers.
+const SOFA_BACKREST_FILL = "#e08ae0";
+const SOFA_CUSHION_STROKE = INK;
 const SOFA_BACKREST_RATIO = 0.3;
 
 interface Style {
@@ -34,21 +38,21 @@ interface Style {
 function styleFor(object: HallObject): Style {
   switch (object.type) {
     case "table":
-      return { fill: "#ffffff", stroke: "#1f2937" };
+      return { fill: "#ffffff", stroke: INK };
     case "sofa":
-      return { fill: "#f9a8d4", stroke: "#9d174d" };
+      return { fill: "#f6b8f6", stroke: INK };
     case "stage":
-      return { fill: "#4c1d95", stroke: "#2e1065" };
+      return { fill: INK, stroke: INK };
     case "dance_floor":
-      return { fill: "rgba(250, 204, 21, 0.45)", stroke: "#ca8a04" };
+      return { fill: "rgba(248, 195, 53, 0.65)", stroke: INK };
     case "restricted_area":
-      return { fill: "rgba(220, 38, 38, 0.25)", stroke: "#dc2626" };
+      return { fill: "rgba(239, 68, 68, 0.3)", stroke: INK };
     case "service_area":
-      return { fill: "rgba(59, 130, 246, 0.2)", stroke: "#64748b" };
+      return { fill: "rgba(168, 213, 181, 0.75)", stroke: INK };
     case "entrance":
-      return { fill: "#16a34a", stroke: "#166534" };
+      return { fill: "#a8d5b5", stroke: INK };
     case "exit":
-      return { fill: "#f97316", stroke: "#c2410c" };
+      return { fill: "#ff9a6b", stroke: INK };
     default:
       return assertNever(object);
   }
@@ -327,7 +331,7 @@ interface LabelInfo {
 }
 
 function labelInfo(object: HallObject, tableNumber: number | null): LabelInfo {
-  const dark = "#111827";
+  const dark = INK;
   switch (object.type) {
     case "table":
       return {
@@ -378,6 +382,8 @@ export const HallObjectLabel = memo(function HallObjectLabel({ object, tableNumb
       offsetY={height / 2}
       text={lines.join("\n")}
       fontSize={LABEL_FONT_SIZE}
+      fontFamily={LABEL_FONT}
+      fontStyle="bold"
       lineHeight={LABEL_LINE_HEIGHT}
       align="center"
       verticalAlign="middle"
