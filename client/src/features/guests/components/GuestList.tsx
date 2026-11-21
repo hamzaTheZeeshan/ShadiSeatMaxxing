@@ -27,6 +27,11 @@ type Filter<T extends string> = T | "all";
 const PAGE_SIZE = 100;
 const COLUMN_COUNT = 11;
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const MINT = "#a8d5b5";
+const MUTED = "#4b4b4b";
+
 const styles = {
   wrap: {
     display: "flex",
@@ -34,44 +39,53 @@ const styles = {
     gap: 12,
     padding: 16,
     background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
+    border: `2px solid ${INK}`,
+    boxShadow: `4px 4px 0 ${INK}`,
+    accentColor: INK, // inherited by every checkbox inside
   } satisfies CSSProperties,
   controls: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 } satisfies CSSProperties,
   input: {
     padding: "6px 8px",
-    fontSize: 13,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    background: "#ffffff",
-    color: "#111827",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: "#fffdf6",
+    color: INK,
     fontFamily: "inherit",
     boxSizing: "border-box",
   } satisfies CSSProperties,
   cellInput: { width: "100%", minWidth: 80 } satisfies CSSProperties,
-  count: { fontSize: 13, color: "#4b5563" } satisfies CSSProperties,
-  tableWrap: { overflowX: "auto" } satisfies CSSProperties,
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 } satisfies CSSProperties,
+  count: { fontSize: 12, fontWeight: 600, color: MUTED } satisfies CSSProperties,
+  tableWrap: { overflowX: "auto", border: `2px solid ${INK}` } satisfies CSSProperties,
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 12 } satisfies CSSProperties,
   th: {
     textAlign: "left",
-    padding: "6px 8px",
-    borderBottom: "2px solid #e5e7eb",
-    color: "#374151",
+    padding: "8px 8px",
+    background: MINT,
+    borderBottom: `2px solid ${INK}`,
+    color: INK,
+    fontWeight: 700,
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
-  td: { padding: "6px 8px", borderBottom: "1px solid #f3f4f6", verticalAlign: "middle" } satisfies CSSProperties,
+  td: {
+    padding: "6px 8px",
+    borderBottom: "1px solid rgba(17, 17, 17, 0.2)",
+    verticalAlign: "middle",
+  } satisfies CSSProperties,
   button: {
     padding: "4px 10px",
-    fontSize: 12,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
+    fontFamily: "inherit",
+    fontSize: 11,
+    fontWeight: 700,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
     background: "#ffffff",
-    color: "#111827",
+    color: INK,
     cursor: "pointer",
   } satisfies CSSProperties,
-  empty: { margin: 0, padding: "16px 0", fontSize: 14, color: "#6b7280", textAlign: "center" } satisfies CSSProperties,
-  error: { margin: "4px 0 0", fontSize: 12, color: "#b91c1c" } satisfies CSSProperties,
-  pager: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#4b5563" } satisfies CSSProperties,
+  empty: { margin: 0, padding: "16px 0", fontSize: 13, color: MUTED, textAlign: "center" } satisfies CSSProperties,
+  error: { margin: "4px 0 0", fontSize: 11, fontWeight: 600, color: "#b91c1c" } satisfies CSSProperties,
+  pager: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: INK } satisfies CSSProperties,
 };
 
 function parseFilter<T extends string>(options: ReadonlyArray<EnumOption<T>>, value: string): Filter<T> {

@@ -32,6 +32,10 @@ interface GuestBulkBarProps {
 
 type Choice<T extends string> = T | "";
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+const YELLOW = "#f8c335";
+
 const styles = {
   bar: {
     display: "flex",
@@ -39,47 +43,54 @@ const styles = {
     alignItems: "center",
     gap: 8,
     padding: 12,
-    background: "#fffbeb",
-    border: "1px solid #fcd34d",
-    borderRadius: 10,
+    background: YELLOW,
+    border: `2px solid ${INK}`,
+    boxShadow: `4px 4px 0 ${INK}`,
+    accentColor: INK,
   } satisfies CSSProperties,
   input: {
     padding: "6px 8px",
-    fontSize: 13,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    background: "#ffffff",
-    color: "#111827",
+    fontSize: 12,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: "#fffdf6",
+    color: INK,
     fontFamily: "inherit",
   } satisfies CSSProperties,
   button: {
     padding: "6px 12px",
-    fontSize: 13,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
+    fontFamily: "inherit",
+    fontSize: 12,
+    fontWeight: 700,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
     background: "#ffffff",
-    color: "#111827",
+    color: INK,
     cursor: "pointer",
   } satisfies CSSProperties,
   primary: {
     padding: "6px 12px",
-    fontSize: 13,
-    border: "1px solid #111827",
-    borderRadius: 6,
-    background: "#111827",
+    fontFamily: "inherit",
+    fontSize: 12,
+    fontWeight: 700,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: INK,
     color: "#ffffff",
     cursor: "pointer",
   } satisfies CSSProperties,
   danger: {
     padding: "6px 12px",
-    fontSize: 13,
-    border: "1px solid #b91c1c",
-    borderRadius: 6,
-    background: "#ffffff",
-    color: "#b91c1c",
+    fontFamily: "inherit",
+    fontSize: 12,
+    fontWeight: 700,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: "#ff9a9a",
+    color: INK,
     cursor: "pointer",
   } satisfies CSSProperties,
-  count: { fontSize: 13, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
+  count: { fontSize: 12, fontWeight: 700, color: INK } satisfies CSSProperties,
 };
 
 interface ChoiceSelectProps<T extends string> {

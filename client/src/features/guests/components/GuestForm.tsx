@@ -43,6 +43,9 @@ function isFieldName(key: PropertyKey): key is keyof NewGuest {
 
 const EMPTY_DRAFT: NewGuest = { name: "", ...DEFAULT_GUEST_FIELDS };
 
+// Neo-brutalist theme, same palette as the home page.
+const INK = "#111111";
+
 const styles = {
   form: {
     display: "flex",
@@ -50,8 +53,8 @@ const styles = {
     gap: 12,
     padding: 16,
     background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
+    border: `2px solid ${INK}`,
+    boxShadow: `4px 4px 0 ${INK}`,
   } satisfies CSSProperties,
   grid: {
     display: "grid",
@@ -59,28 +62,30 @@ const styles = {
     gap: 12,
   } satisfies CSSProperties,
   field: { display: "flex", flexDirection: "column", gap: 4, minWidth: 0 } satisfies CSSProperties,
-  label: { fontSize: 13, fontWeight: 600, color: "#111827" } satisfies CSSProperties,
+  label: { fontSize: 12, fontWeight: 700, color: INK } satisfies CSSProperties,
   input: {
     padding: "7px 9px",
-    fontSize: 14,
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    background: "#ffffff",
-    color: "#111827",
+    fontSize: 13,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: "#fffdf6",
+    color: INK,
     fontFamily: "inherit",
     width: "100%",
     boxSizing: "border-box",
   } satisfies CSSProperties,
-  inputError: { borderColor: "#b91c1c" } satisfies CSSProperties,
-  error: { margin: 0, fontSize: 12, color: "#b91c1c" } satisfies CSSProperties,
-  heading: { margin: 0, fontSize: 16, fontWeight: 700, color: "#111827" } satisfies CSSProperties,
+  inputError: { borderColor: "#dc2626", background: "#ffd6d6" } satisfies CSSProperties,
+  error: { margin: 0, fontSize: 11, fontWeight: 600, color: "#b91c1c" } satisfies CSSProperties,
+  heading: { margin: 0, fontSize: 16, fontWeight: 700, color: INK } satisfies CSSProperties,
   primary: {
     alignSelf: "flex-start",
-    padding: "8px 16px",
-    fontSize: 14,
-    border: "1px solid #111827",
-    borderRadius: 6,
-    background: "#111827",
+    padding: "9px 16px",
+    fontFamily: "inherit",
+    fontSize: 13,
+    fontWeight: 700,
+    border: `2px solid ${INK}`,
+    borderRadius: 0,
+    background: INK,
     color: "#ffffff",
     cursor: "pointer",
   } satisfies CSSProperties,
