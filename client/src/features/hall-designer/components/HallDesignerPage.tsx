@@ -15,7 +15,7 @@ import Toolbar from "./tools/Toolbar";
 /* ---------- config ---------- */
 // Match the setting on the home page.
 const SHOW_SIDEBAR = true;
-const APP_NAME = "SEATPLAN";
+const APP_NAME = "SHADIMAXXING";
 const STATUS_TIMEOUT_MS = 4000;
 
 /* ---------- theme (same as home page) ---------- */

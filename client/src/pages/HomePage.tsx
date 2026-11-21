@@ -8,7 +8,7 @@ import { useSeatingStore } from "../features/seating/store/seatingStore";
 /* ---------- config ---------- */
 // Set to false if your app shell already renders its own sidebar.
 const SHOW_SIDEBAR = true;
-const APP_NAME = "SEATPLAN";
+const APP_NAME = "SHADIMAXXING";
 
 /* ---------- theme (neo-brutalist) ---------- */
 const INK = "#111111";

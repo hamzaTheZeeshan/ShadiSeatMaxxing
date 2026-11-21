@@ -24,7 +24,7 @@ const STATUS_TIMEOUT_MS = 4000;
 /* ---------- config ---------- */
 // Match the setting on the home page.
 const SHOW_SIDEBAR = true;
-const APP_NAME = "SEATPLAN";
+const APP_NAME = "SHADIMAXXING";
 
 /* ---------- theme (same as home page) ---------- */
 const INK = "#111111";

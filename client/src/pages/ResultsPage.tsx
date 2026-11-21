@@ -10,7 +10,7 @@ import { useSeatingStore } from "../features/seating/store/seatingStore";
 /* ---------- config ---------- */
 // Match the setting on the home page.
 const SHOW_SIDEBAR = true;
-const APP_NAME = "SEATPLAN";
+const APP_NAME = "SHADIMAXXING";
 
 /* ---------- theme (same as home / constraints page) ---------- */
 const INK = "#111111";
