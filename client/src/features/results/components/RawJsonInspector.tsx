@@ -70,9 +70,10 @@ export default function RawJsonInspector({ tabs }: Props) {
             style={{
               margin: 0,
               padding: 16,
-              borderRadius: 12,
-              background: "#111827",
-              color: "#e5e7eb",
+              fontFamily: "inherit",
+              border: "2px solid #111111",
+              background: "#111111",
+              color: "#fff4dc",
               fontSize: 12,
               lineHeight: 1.5,
               overflow: "auto",

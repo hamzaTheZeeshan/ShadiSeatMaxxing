@@ -11,7 +11,7 @@ function formatTime(ms: number): string {
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: 12, border: `1px solid ${BORDER}`, borderRadius: 12 }}>
+    <div style={{ padding: 12, border: `2px solid ${BORDER}`, background: "#fff4dc" }}>
       <div style={{ fontSize: 12, color: MUTED }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{children}</div>
     </div>

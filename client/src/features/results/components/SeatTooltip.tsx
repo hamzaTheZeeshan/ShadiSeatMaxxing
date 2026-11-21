@@ -13,16 +13,16 @@ import type { ConstraintContext } from "../utils/constraintReport";
 import { composition, guestChecks, objectBroken, cleanMessage, zoneLabel } from "../utils/constraintReport";
 import type { SeatObject, SeatSlot } from "../utils/seatingModel";
 import CheckList from "./CheckList";
-import { ACCENT, BORDER, INK, MUTED } from "../ui";
+import { BORDER, INK, MUTED } from "../ui";
 
 const dl: CSSProperties = { display: "grid", gridTemplateColumns: "96px 1fr", gap: "2px 8px", margin: 0, fontSize: 12 };
 const heading: CSSProperties = {
-  margin: "10px 0 4px",
+  margin: "12px 0 6px",
+  paddingBottom: 2,
+  borderBottom: `2px solid ${INK}`,
   fontSize: 11,
   fontWeight: 700,
-  letterSpacing: 0.5,
-  textTransform: "uppercase",
-  color: ACCENT,
+  color: INK,
 };
 
 function Rows({ rows }: { rows: ReadonlyArray<readonly [string, string]> }) {
@@ -69,10 +69,10 @@ export default function SeatTooltip({ seatObject, slot, ctx, pinned, onClose }: 
         maxHeight: 460,
         overflowY: pinned ? "auto" : "hidden",
         padding: 14,
-        borderRadius: 12,
-        background: "#ffffff",
-        border: `1px solid ${BORDER}`,
-        boxShadow: "0 12px 32px rgba(17, 24, 39, 0.18)",
+        borderRadius: 0,
+        background: "#fff4dc",
+        border: `2px solid ${BORDER}`,
+        boxShadow: `4px 4px 0 ${INK}`,
         color: INK,
         fontFamily: "inherit",
       }}

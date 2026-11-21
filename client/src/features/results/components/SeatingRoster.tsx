@@ -120,7 +120,7 @@ export default function SeatingRoster({ ctx, selectedGuestId, onSelectGuest }: P
           {tableRows.map((so) => {
             const filled = so.slots.filter((s) => s.guest !== null).length;
             return (
-              <div key={so.object.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 12, padding: 12 }}>
+              <div key={so.object.id} style={{ border: `2px solid ${BORDER}`, background: "#fff4dc", padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <strong>
                     {so.label} <span style={{ color: MUTED, fontWeight: 400 }}>· {so.kind}</span>
@@ -141,8 +141,10 @@ export default function SeatingRoster({ ctx, selectedGuestId, onSelectGuest }: P
                           onClick={() => onSelectGuest(slot.guest?.id ?? "")}
                           style={{
                             border: "none",
-                            background: slot.guest.id === selectedGuestId ? "#fef9c3" : "none",
+                            background: slot.guest.id === selectedGuestId ? "#f6b8f6" : "none",
                             padding: 0,
+                            fontFamily: "inherit",
+                            textAlign: "left",
                             cursor: "pointer",
                             fontSize: 13,
                             color: issuesByGuest.has(slot.guest.id) ? "#b91c1c" : "inherit",
@@ -187,7 +189,7 @@ export default function SeatingRoster({ ctx, selectedGuestId, onSelectGuest }: P
                   <tr
                     key={g.id}
                     onClick={() => onSelectGuest(g.id)}
-                    style={{ cursor: "pointer", background: g.id === selectedGuestId ? "#fef9c3" : undefined }}
+                    style={{ cursor: "pointer", background: g.id === selectedGuestId ? "#f6b8f6" : undefined }}
                   >
                     <td style={ui.td}>{g.name}</td>
                     <td style={ui.td}>{g.household || "—"}</td>

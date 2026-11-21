@@ -28,18 +28,18 @@ interface Handlers {
 type Bind = (objectId: string, slotIndex: number | null) => Handlers;
 
 const OBJECT_STYLE: Record<HallObject["type"], { fill: string; stroke: string }> = {
-  wall: { fill: "#9ca3af", stroke: "#4b5563" },
-  table: { fill: "#ffffff", stroke: "#1f2937" },
-  sofa: { fill: "#f9a8d4", stroke: "#9d174d" },
-  stage: { fill: "#4c1d95", stroke: "#2e1065" },
-  dance_floor: { fill: "rgba(250, 204, 21, 0.45)", stroke: "#ca8a04" },
-  restricted_area: { fill: "rgba(220, 38, 38, 0.25)", stroke: "#dc2626" },
-  service_area: { fill: "rgba(59, 130, 246, 0.2)", stroke: "#64748b" },
-  entrance: { fill: "#16a34a", stroke: "#166534" },
-  exit: { fill: "#f97316", stroke: "#c2410c" },
+  wall: { fill: "#4b4b4b", stroke: "#111111" },
+  table: { fill: "#ffffff", stroke: "#111111" },
+  sofa: { fill: "#f6b8f6", stroke: "#111111" },
+  stage: { fill: "#5bb8ff", stroke: "#111111" },
+  dance_floor: { fill: "rgba(255, 208, 168, 0.7)", stroke: "#111111" },
+  restricted_area: { fill: "rgba(255, 154, 154, 0.45)", stroke: "#b91c1c" },
+  service_area: { fill: "rgba(91, 184, 255, 0.25)", stroke: "#111111" },
+  entrance: { fill: "#a8d5b5", stroke: "#111111" },
+  exit: { fill: "#ff9a6b", stroke: "#111111" },
 };
 
-const SIDE_FILL = { bride: "#f472b6", groom: "#60a5fa", other: "#a78bfa" } as const;
+const SIDE_FILL = { bride: "#f6b8f6", groom: "#5bb8ff", other: "#a8d5b5" } as const;
 const EMPTY_FILL = "#ffffff";
 const PAD = 16;
 const TIP_W = 320;
@@ -61,7 +61,7 @@ function ObjectBody({ object, bind }: { object: HallObject; bind: Bind }) {
       return (
         <>
           <Rect x={-object.width / 2} y={-object.height / 2} width={object.width} height={object.height} cornerRadius={0.15} {...common} {...events} />
-          <Rect x={-object.width / 2} y={-object.height / 2} width={object.width} height={object.height * 0.3} cornerRadius={0.15} fill="#db2777" listening={false} />
+          <Rect x={-object.width / 2} y={-object.height / 2} width={object.width} height={object.height * 0.3} cornerRadius={0.15} fill="#d58bd5" listening={false} />
         </>
       );
     }
@@ -74,7 +74,7 @@ function ObjectBody({ object, bind }: { object: HallObject; bind: Bind }) {
 }
 
 function labelLines(object: HallObject, model: SeatingModel): { lines: string[]; color: string; dy: number } {
-  const dark = "#111827";
+  const dark = "#111111";
   const seatObject = model.byId.get(object.id);
   if (seatObject) {
     const filled = seatObject.slots.filter((s) => s.guest !== null).length;
@@ -82,7 +82,7 @@ function labelLines(object: HallObject, model: SeatingModel): { lines: string[];
   }
   switch (object.type) {
     case "stage":
-      return { lines: ["Stage"], color: "#ffffff", dy: 0 };
+      return { lines: ["Stage"], color: "#111111", dy: 0 };
     case "dance_floor":
       return { lines: ["Dance Floor"], color: dark, dy: 0 };
     case "restricted_area":
@@ -174,7 +174,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
 
     return (
       <>
-        <Rect x={0} y={0} width={hall.width} height={hall.height} fill="#ffffff" stroke="#cbd5e1" strokeWidth={2} strokeScaleEnabled={false} />
+        <Rect x={0} y={0} width={hall.width} height={hall.height} fill="#ffffff" stroke="#111111" strokeWidth={2} strokeScaleEnabled={false} />
         {objects.map((o) => {
           const seatObject = model.byId.get(o.id);
           return (
@@ -183,7 +183,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
               {seatObject?.slots.map((slot) => {
                 const guest = slot.guest;
                 const issue = guest ? brokenGuests.get(guest.id) : undefined;
-                const stroke = issue === "hard" ? "#dc2626" : issue === "soft" ? "#d97706" : "#374151";
+                const stroke = issue === "hard" ? "#dc2626" : issue === "soft" ? "#d97706" : "#111111";
                 return (
                   <Group key={slot.index}>
                     {guest && guest.id === highlightGuestId ? (
@@ -194,7 +194,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
                       y={slot.y}
                       radius={slot.radius}
                       fill={guest ? SIDE_FILL[guest.side] : EMPTY_FILL}
-                      stroke={guest ? stroke : "#9ca3af"}
+                      stroke={guest ? stroke : "#111111"}
                       strokeWidth={issue ? 2.5 : 1.25}
                       strokeScaleEnabled={false}
                       {...bind(o.id, slot.index)}
@@ -242,7 +242,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
 
   return (
     <div>
-      <div ref={wrapRef} style={{ position: "relative", width: "100%", border: `1px solid ${BORDER}`, borderRadius: 12, overflow: "visible", background: "#f8fafc" }}>
+      <div ref={wrapRef} style={{ position: "relative", width: "100%", border: `2px solid ${BORDER}`, borderRadius: 0, overflow: "visible", background: "#ffffff" }}>
         <Stage
           width={width}
           height={height}
@@ -275,7 +275,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
         <Legend color={SIDE_FILL.bride} label="Bride side" />
         <Legend color={SIDE_FILL.groom} label="Groom side" />
         <Legend color={SIDE_FILL.other} label="Other" />
-        <Legend color={EMPTY_FILL} label="Empty seat" border="#9ca3af" />
+        <Legend color={EMPTY_FILL} label="Empty seat" border="#111111" />
         <Legend color="#ffffff" label="Hard rule broken" border="#dc2626" />
         <Legend color="#ffffff" label="Soft preference missed" border="#d97706" />
       </div>
@@ -283,7 +283,7 @@ export default function ResultsHallView({ hall, objects, model, ctx, highlightGu
   );
 }
 
-function Legend({ color, label, border = "#374151" }: { color: string; label: string; border?: string }) {
+function Legend({ color, label, border = "#111111" }: { color: string; label: string; border?: string }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
       <span style={{ width: 12, height: 12, borderRadius: "50%", background: color, border: `2px solid ${border}` }} />
