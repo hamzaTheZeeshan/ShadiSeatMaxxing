@@ -59,7 +59,7 @@ const CSS = `
 `;
 
 /* ---------- icons ---------- */
-type IconName = "hall" | "guests" | "rules" | "results" | "layout"| "back";
+type IconName = "hall" | "guests" | "rules" | "results" | "layout" | "back" | "next";
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   hall: (
@@ -109,6 +109,12 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
     <>
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
+  next: (
+    <>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
     </>
   ),
 };
@@ -374,55 +380,64 @@ export default function ConstraintsPage() {
           <div style={styles.topbar}>
             <button
               type="button"
-              className="cp-focus"
+              className="cp-hover cp-focus"
               style={styles.squareBtn}
               onClick={() => navigate(-1)}
               aria-label="Go back"
             >
               <Icon name="back" />
             </button>
+
+            <Link
+              to="/results"
+              className="cp-hover cp-focus"
+              style={{ ...styles.squareBtn, ...styles.topSpacer }}
+              aria-label="Next: Results"
+            >
+              <Icon name="next" />
+            </Link>
           </div>
 
-      <div>
-        <h1 style={styles.heading}>Constraints</h1>
-        <p style={styles.intro}>Set seating rules and table zones. The solver will use them in a later step.</p>
-        <p style={styles.households}>
-          {householdsTogether
-            ? `${householdCount} ${householdCount === 1 ? "household" : "households"} will be seated together automatically`
-            : "Households are not kept together (turn this on in Settings)."}
-        </p>
+          <div>
+            <h1 style={styles.heading}>Constraints</h1>
+            <p style={styles.intro}>Set seating rules and table zones. The solver will use them in a later step.</p>
+            <p style={styles.households}>
+              {householdsTogether
+                ? `${householdCount} ${householdCount === 1 ? "household" : "households"} will be seated together automatically`
+                : "Households are not kept together (turn this on in Settings)."}
+            </p>
 
-        <ConstraintSettingsPanel />
-        <TableZonesPanel />
-        <RuleForm />
-        <RuleList />
-        <ConstraintIssues />
-        <ConstraintImport />
+            <ConstraintSettingsPanel />
+            <TableZonesPanel />
+            <RuleForm />
+            <RuleList />
+            <ConstraintIssues />
+            <ConstraintImport />
 
-        <div style={styles.actions}>
-          <button type="button" className="cp-hover cp-focus" style={styles.button} onClick={handleSave}>
-            Save to browser
-          </button>
-          <button type="button" className="cp-hover cp-focus" style={styles.button} onClick={handleLoad}>
-            Load from browser
-          </button>
-          <button type="button" className="cp-hover cp-focus" style={styles.danger} onClick={handleClear}>
-            Clear all rules
-          </button>
-        </div>
-        <div role="status" style={{ ...styles.status, color: status?.ok ? "#15803d" : "#b91c1c" }}>
-          {status?.text ?? ""}
-        </div>
+            <div style={styles.actions}>
+              <button type="button" className="cp-hover cp-focus" style={styles.button} onClick={handleSave}>
+                Save to browser
+              </button>
+              <button type="button" className="cp-hover cp-focus" style={styles.button} onClick={handleLoad}>
+                Load from browser
+              </button>
+              <button type="button" className="cp-hover cp-focus" style={styles.danger} onClick={handleClear}>
+                Clear all rules
+              </button>
+            </div>
+            <div role="status" style={{ ...styles.status, color: status?.ok ? "#15803d" : "#b91c1c" }}>
+              {status?.text ?? ""}
+            </div>
 
-        <div style={styles.links}>
-          <Link to="/guests" className="cp-hover cp-focus" style={styles.back}>
-            Back: Guests
-          </Link>
-          <Link to="/designer" className="cp-hover cp-focus" style={styles.back}>
-            Back: Hall
-          </Link>
-        </div>
-      </div>
+            <div style={styles.links}>
+              <Link to="/guests" className="cp-hover cp-focus" style={styles.back}>
+                Back: Guests
+              </Link>
+              <Link to="/designer" className="cp-hover cp-focus" style={styles.back}>
+                Back: Hall
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

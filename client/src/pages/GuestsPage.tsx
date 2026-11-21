@@ -60,7 +60,7 @@ const CSS = `
 `;
 
 /* ---------- icons ---------- */
-type IconName = "hall" | "guests" | "rules" | "results" | "layout" | "back";
+type IconName = "hall" | "guests" | "rules" | "results" | "layout" | "back" | "next";
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   hall: (
@@ -110,6 +110,12 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
     <>
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
+  next: (
+    <>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
     </>
   ),
 };
@@ -466,74 +472,83 @@ export default function GuestsPage() {
           <div style={styles.topbar}>
             <button
               type="button"
-              className="gp-focus"
+              className="gp-hover gp-focus"
               style={styles.squareBtn}
               onClick={() => navigate(-1)}
               aria-label="Go back"
             >
               <Icon name="back" />
             </button>
+
+            <Link
+              to="/constraints"
+              className="gp-hover gp-focus"
+              style={{ ...styles.squareBtn, ...styles.topSpacer }}
+              aria-label="Next: Rules"
+            >
+              <Icon name="next" />
+            </Link>
           </div>
 
-      <div style={styles.inner}>
-        <h1 style={styles.heading}>Guests</h1>
-        <p style={styles.intro}>Add guests one by one, or import a whole list from JSON or CSV.</p>
+          <div style={styles.inner}>
+            <h1 style={styles.heading}>Guests</h1>
+            <p style={styles.intro}>Add guests one by one, or import a whole list from JSON or CSV.</p>
 
-        <GuestSummary stats={stats} />
-        <GuestForm onAdd={handleAdd} />
+            <GuestSummary stats={stats} />
+            <GuestForm onAdd={handleAdd} />
 
-        <div style={styles.importRow}>
-          <div style={styles.importMain}>
-            <GuestImport onImport={handleImport} hasGuests={guests.length > 0} />
+            <div style={styles.importRow}>
+              <div style={styles.importMain}>
+                <GuestImport onImport={handleImport} hasGuests={guests.length > 0} />
+              </div>
+              <aside style={styles.tip} aria-label="Import tip">
+                💡 <strong>Tip:</strong> Take a photo of your handwritten guest notes, download our sample JSON format,
+                and give both to an AI (ChatGPT/Claude) to instantly format your entire list!
+              </aside>
+            </div>
+
+            <div style={styles.toolbar}>
+              <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleExportJson}>
+                Export JSON
+              </button>
+              <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleExportCsv}>
+                Export CSV
+              </button>
+              <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleSave}>
+                Save to browser
+              </button>
+              <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleLoad}>
+                Load from browser
+              </button>
+              <button type="button" className="gp-hover gp-focus" style={styles.danger} onClick={handleClear}>
+                Clear all
+              </button>
+              <span
+                role="status"
+                style={{ ...styles.status, color: status?.kind === "error" ? "#b91c1c" : "#15803d" }}
+              >
+                {status?.text ?? ""}
+              </span>
+            </div>
+
+            <GuestBulkBar
+              selectedCount={selected.size}
+              onApply={handleBulkApply}
+              onRemove={handleBulkRemove}
+              onClear={() => setSelectedIds(new Set())}
+            />
+            <GuestList
+              guests={guests}
+              selectedIds={selected}
+              onSelectedChange={setSelectedIds}
+              onUpdate={handleUpdate}
+              onRemove={handleRemove}
+            />
+
+            <Link to="/designer" className="gp-hover gp-focus" style={styles.back}>
+              Back: Hall
+            </Link>
           </div>
-          <aside style={styles.tip} aria-label="Import tip">
-            💡 <strong>Tip:</strong> Take a photo of your handwritten guest notes, download our sample JSON format,
-            and give both to an AI (ChatGPT/Claude) to instantly format your entire list!
-          </aside>
-        </div>
-
-        <div style={styles.toolbar}>
-          <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleExportJson}>
-            Export JSON
-          </button>
-          <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleExportCsv}>
-            Export CSV
-          </button>
-          <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleSave}>
-            Save to browser
-          </button>
-          <button type="button" className="gp-hover gp-focus" style={styles.button} onClick={handleLoad}>
-            Load from browser
-          </button>
-          <button type="button" className="gp-hover gp-focus" style={styles.danger} onClick={handleClear}>
-            Clear all
-          </button>
-          <span
-            role="status"
-            style={{ ...styles.status, color: status?.kind === "error" ? "#b91c1c" : "#15803d" }}
-          >
-            {status?.text ?? ""}
-          </span>
-        </div>
-
-        <GuestBulkBar
-          selectedCount={selected.size}
-          onApply={handleBulkApply}
-          onRemove={handleBulkRemove}
-          onClear={() => setSelectedIds(new Set())}
-        />
-        <GuestList
-          guests={guests}
-          selectedIds={selected}
-          onSelectedChange={setSelectedIds}
-          onUpdate={handleUpdate}
-          onRemove={handleRemove}
-        />
-
-        <Link to="/designer" className="gp-hover gp-focus" style={styles.back}>
-          Back: Hall
-        </Link>
-      </div>
         </div>
       </div>
     </div>
