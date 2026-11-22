@@ -28,7 +28,6 @@ interface Handlers {
 type Bind = (objectId: string, slotIndex: number | null) => Handlers;
 
 const OBJECT_STYLE: Record<HallObject["type"], { fill: string; stroke: string }> = {
-  wall: { fill: "#4b4b4b", stroke: "#111111" },
   table: { fill: "#ffffff", stroke: "#111111" },
   sofa: { fill: "#f6b8f6", stroke: "#111111" },
   stage: { fill: "#5bb8ff", stroke: "#111111" },

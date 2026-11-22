@@ -133,9 +133,12 @@ export function buildSeatingModel(
         anomalies.push(`Guest '${guest.name}' appears in more than one assignment; the first one was kept.`);
         continue;
       }
-      let slot = seatObject.slots[a.seat_index];
-      if (slot === undefined || slot.guest !== null) slot = seatObject.slots.find((s) => s.guest === null);
-      if (slot === undefined) {
+      const preferred = seatObject.slots[a.seat_index];
+      const slot =
+        preferred && preferred.guest === null
+          ? preferred
+          : seatObject.slots.find((s) => s.guest === null);
+      if (!slot) {
         anomalies.push(`${seatObject.label} has no free seat for '${guest.name}'.`);
         continue;
       }
